@@ -5,12 +5,12 @@ matplotlib.use('TkAgg')
 
 # Time
 start = 0
-end = 3
+end = 100
 step = 0.001
 t = np.arange(start, end + step, step)
 
 # Constants
-C = 0.1
+C = 1.0
 gK = 36
 gNa = 120
 gL = 0.3
@@ -19,28 +19,26 @@ VK = -77
 VNa = 50
 VL = -54.4
 
-I = np.zeros(len(t)) 
+I = np.zeros(len(t))
 V = np.zeros(len(t)) 
 n = np.zeros(len(t)) 
 m = np.zeros(len(t)) 
 h = np.zeros(len(t)) 
 
-
 # Initial Conductances
-# I[int(0.5/step):int(1.0/step)] = 190
-print(I)
-n[0] = 0.317
+I[int(0.5/step):int(1.0/step)] = 280
+n[0] = 0.32
 m[0] = 0.05
 h[0] = 0.6
-V[0] = -65
+V[0] = -65.85
 
 
-def dVdt(V, Icur, nvar, mvar, hvar):
+def dVdt(V, Iext, nvar, mvar, hvar):
     I_Na = np.power(mvar, 3) * gNa * hvar * (V-VNa)
     I_K = np.power(nvar, 4) * gK * (V-VK)
     I_L = gL * (V-VL)
-    I_ion = Icur - I_K - I_Na - I_L
-    return I_ion / C
+    I_tot = Iext - I_K - I_Na - I_L
+    return I_tot / C
 
 
 def dNdt(N, alpha, beta):
@@ -50,12 +48,24 @@ def dNdt(N, alpha, beta):
 # Simulate
 for i in range(len(t)-1):
     # coefficients
-    alpha_n = 0.01 * (V[i] + 10) / (np.exp((V[i] + 10) / 10) - 1)
-    alpha_m = 0.01 * (V[i] + 25) / (np.exp((V[i] + 25) / 10) - 1)
-    alpha_h = 0.07 * np.exp(V[i] / 20)
-    beta_n = 0.125 * np.exp(V[i] / 80)
-    beta_m = 4 * np.exp(V[i] / 18)
-    beta_h = 1 / (np.exp((V[i] + 30) / 10) + 1)
+    # alpha_n = 0.01 * (V[i] + 10) / (np.exp((V[i] + 10) / 10) - 1)
+    # alpha_m = 0.01 * (V[i] + 25) / (np.exp((V[i] + 25) / 10) - 1)
+    # alpha_h = 0.07 * np.exp(V[i] / 20)
+    # beta_n = 0.125 * np.exp(V[i] / 80)
+    # beta_m = 4 * np.exp(V[i] / 18)
+    # beta_h = 1 / (np.exp((V[i] + 30) / 10) + 1)
+    alpha_n = 0.01 * (V[i] + 55) / (1 - np.exp(-(V[i] + 55) / 10))
+    # 0.01 * (self.V + 55) / (1 - np.exp(-(self.V + 55) / 10))
+    alpha_m = 0.01 * (V[i] + 40) / (1 - np.exp(-(V[i] + 40) / 10))
+    # 0.1 * (self.V + 40) / (1 - np.exp(-(self.V + 40) / 10))
+    alpha_h = 0.07 * np.exp(-(V[i] + 65) / 20)
+    # 0.07 * np.exp(-(self.V + 65) / 20)
+    beta_n = 0.125 * np.exp(-(V[i] + 65) / 80)
+    # 0.125 * np.exp(-(self.V + 65) / 80)
+    beta_m = 4 * np.exp(-(V[i] + 65) / 18)
+    # 4.0 * np.exp(-(self.V + 65) / 18)
+    beta_h = 1 / (1 + np.exp(-(V[i] + 35) / 10))
+    # 1 / (1 + np.exp(-(self.V + 35) / 10))
 
     # calculate derivatives using Euler first order approximation
     k1 = dVdt(V[i], I[i], n[i], m[i], h[i])
