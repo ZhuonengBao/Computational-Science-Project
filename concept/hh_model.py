@@ -1,3 +1,14 @@
+"""
+ * Hodgkin-Huxley Model
+ *
+ * Author's: Zhuoneng Bao, Mink van Maanen, Lynne Vogel and Babet Wijsman
+ * Date: 9 January 2025
+ * Description: This program implements the Hodgkin-Huxley model of a neuron, 
+ *              describing the initiation and propagation of action potentials.
+ *              The constants are based on the work of 
+ *              Rinzel, J. and Ermentrout, G.B. (1998),
+ *              "Analysis of Neural Excitability and Oscillations."
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
@@ -11,17 +22,17 @@ class HodgkinHuxleyNeuron:
 
         # Sodium (Na) channel
         self.g_Na = 120.0  # Maximum conductance
-        self.E_Na = 50.0  # Reversal potential
-        self.m = 0.05  # Activation gate
-        self.h = 0.6  # Inactivation gate
+        self.E_Na = 50.0   # Reversal potential
+        self.m = 0.05      # Activation gate
+        self.h = 0.6       # Inactivation gate
 
         # Potassium (K) channel
-        self.g_K = 36.0  # Maximum conductance
-        self.E_K = -77.0  # Reversal potential
-        self.n = 0.32  # Activation gate
+        self.g_K = 36.0    # Maximum conductance
+        self.E_K = -77.0   # Reversal potential
+        self.n = 0.32      # Activation gate
 
         # Leak channel
-        self.g_L = 0.3  # Maximum conductance
+        self.g_L = 0.3      # Maximum conductance
         self.E_L = -54.387  # Reversal potential
 
         # External current
@@ -105,22 +116,28 @@ class HodgkinHuxleyNeuron:
         self.h += dt * (k1_h + 2 * k2_h + 2 * k3_h + k4_h) / 6
         self.n += dt * (k1_n + 2 * k2_n + 2 * k3_n + k4_n) / 6
 
-# Parameters
-T = 50.0
-dt = 0.01
-time = np.arange(0, T, dt)
 
-# Create neuron
-neuron = HodgkinHuxleyNeuron()
-neuron.I_ext = 10.0  # External current
+def main():
+    # Parameters
+    T = 50.0
+    dt = 0.01
+    time = np.arange(0, T, dt)
+    
+    # Create neuron
+    neuron = HodgkinHuxleyNeuron()
+    neuron.I_ext = 10.0  # External current
+    
+    # Record data
+    V_record = []
+    for t in time:
+        neuron.step(dt)
+        V_record.append(neuron.V)
+    
+    # Plot
+    plt.figure(figsize=(8, 6))
+    plt.plot(time, V_record)
+    plt.show()
 
-# Record data
-V_record = []
-for t in time:
-    neuron.step(dt)
-    V_record.append(neuron.V)
 
-# Plot
-plt.figure(figsize=(8, 6))
-plt.plot(time, V_record)
-plt.show()
+if __name__ == "__main__":
+    main()
