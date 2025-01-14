@@ -10,7 +10,7 @@ n_rings = 3
 neurons_per_ring = n_neurons // n_rings
 k_neighbors = 2
 
-ring_graph = nx.Graph()
+ring_graph = nx.watts_strogatz_graph()
 ring_graph.add_nodes_from(range(n_neurons))
 radii = np.linspace(1, 3, n_rings)  # From smaller to larger radii
 
