@@ -64,12 +64,12 @@ class HodgkinHuxleyNeuron:
         I_ion = I_Na + I_K + I_L
         return (self.I_ext - I_ion) / self.C_m
     
-    # Synaptic current
-    def synaptic_current(self, t, t_firings, w, tau):
-        I_syn = np.zeros_like(t)
-        for t_fire in t_firings:
-            I_syn += w * np.exp(-(t - t_fire) / tau) * (t >= t_fire)
-        return I_syn
+    # # Synaptic current
+    # def synaptic_current(self, t, t_firings, w, tau):
+    #     I_syn = np.zeros_like(t)
+    #     for t_fire in t_firings:
+    #         I_syn += w * np.exp(-(t - t_fire) / tau) * (t >= t_fire)
+    #     return I_syn
     
     # Membrane potential with synaptic current
     def dV_dt(self, V, m, h, n, I_syn):
@@ -80,19 +80,11 @@ class HodgkinHuxleyNeuron:
         return (self.I_ext - I_ion + I_syn) / self.C_m
 
     # Perform one step using Runge-Kutta
-    def step(self, dt):
-        # t_span = (0, 100)  # ms
-        t_const = 5.0
-        # t_eval = np.linspace(0, 100, 1000)
-        # y0 = [-65, 0.05, 0.6, 0.32]  # Initial conditions for V, m, h, n
-        # I_ext = 10.0  # External current (μA/cm^2)
-        t_firings = [20, 40, 60]  # Presynaptic firing times (ms)
-        w = 0.5  # Synaptic weight
-        tau = 5.0  # Synaptic decay time constant (ms)
+    def step(self, dt, I_syn):
         V = self.V
         m, h, n = self.m, self.h, self.n
 
-        I_syn = self.synaptic_current(t_const, t_firings, w, tau)
+        # I_syn = self.synaptic_current(t_const, t_firings, w, tau)
         k1_V = self.dV_dt(V, m, h, n, I_syn)
         # k1_V = self.dV_dt(V, m, h, n)
         k1_m = self.dm_dt(V, m)
