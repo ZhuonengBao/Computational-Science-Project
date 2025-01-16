@@ -16,6 +16,9 @@ matplotlib.use('TkAgg')
 
 class HodgkinHuxleyNeuron:
     def __init__(self):
+        # Timestep
+        self.dt = 0.01
+
         # Membrane properties
         self.C_m = 1.0  # Membrane capacitance
         self.V = -65.0  # Initial membrane potential
@@ -78,43 +81,43 @@ class HodgkinHuxleyNeuron:
         return self.alpha_n(V) * (1 - n) - self.beta_n(V) * n
 
     # Membrane potential
-    def dV_dt(self, V, m, h, n):
+    def dV_dt(self, I, V, m, h, n):
         I_Na = self.I_Na(V, m, h)
         I_K = self.I_K(V, n)
         I_L = self.I_L(V)
         I_ion = I_Na + I_K + I_L
-        return (self.I_ext - I_ion) / self.C_m
+        return (I - I_ion) / self.C_m
 
     # Perform one step using Runge-Kutta
-    def step(self, dt):
+    def step(self, I):
         V = self.V
         m, h, n = self.m, self.h, self.n
 
-        k1_V = self.dV_dt(V, m, h, n)
+        k1_V = self.dV_dt(I, V, m, h, n)
         k1_m = self.dm_dt(V, m)
         k1_h = self.dh_dt(V, h)
         k1_n = self.dn_dt(V, n)
 
-        k2_V = self.dV_dt(V + dt * k1_V / 2, m + dt * k1_m / 2, h + dt * k1_h / 2, n + dt * k1_n / 2)
-        k2_m = self.dm_dt(V + dt * k1_V / 2, m + dt * k1_m / 2)
-        k2_h = self.dh_dt(V + dt * k1_V / 2, h + dt * k1_h / 2)
-        k2_n = self.dn_dt(V + dt * k1_V / 2, n + dt * k1_n / 2)
+        k2_V = self.dV_dt(I, V + self.dt* k1_V / 2, m + self.dt* k1_m / 2, h + self.dt* k1_h / 2, n + self.dt* k1_n / 2)
+        k2_m = self.dm_dt(V + self.dt* k1_V / 2, m + self.dt* k1_m / 2)
+        k2_h = self.dh_dt(V + self.dt* k1_V / 2, h + self.dt* k1_h / 2)
+        k2_n = self.dn_dt(V + self.dt* k1_V / 2, n + self.dt* k1_n / 2)
 
-        k3_V = self.dV_dt(V + dt * k2_V / 2, m + dt * k2_m / 2, h + dt * k2_h / 2, n + dt * k2_n / 2)
-        k3_m = self.dm_dt(V + dt * k2_V / 2, m + dt * k2_m / 2)
-        k3_h = self.dh_dt(V + dt * k2_V / 2, h + dt * k2_h / 2)
-        k3_n = self.dn_dt(V + dt * k2_V / 2, n + dt * k2_n / 2)
+        k3_V = self.dV_dt(I, V + self.dt* k2_V / 2, m + self.dt* k2_m / 2, h + self.dt* k2_h / 2, n + self.dt* k2_n / 2)
+        k3_m = self.dm_dt(V + self.dt* k2_V / 2, m + self.dt* k2_m / 2)
+        k3_h = self.dh_dt(V + self.dt* k2_V / 2, h + self.dt* k2_h / 2)
+        k3_n = self.dn_dt(V + self.dt* k2_V / 2, n + self.dt* k2_n / 2)
 
-        k4_V = self.dV_dt(V + dt * k3_V, m + dt * k3_m, h + dt * k3_h, n + dt * k3_n)
-        k4_m = self.dm_dt(V + dt * k3_V, m + dt * k3_m)
-        k4_h = self.dh_dt(V + dt * k3_V, h + dt * k3_h)
-        k4_n = self.dn_dt(V + dt * k3_V, n + dt * k3_n)
+        k4_V = self.dV_dt(I, V + self.dt* k3_V, m + self.dt* k3_m, h + self.dt* k3_h, n + self.dt* k3_n)
+        k4_m = self.dm_dt(V + self.dt* k3_V, m + self.dt* k3_m)
+        k4_h = self.dh_dt(V + self.dt* k3_V, h + self.dt* k3_h)
+        k4_n = self.dn_dt(V + self.dt* k3_V, n + self.dt* k3_n)
 
         # Update values
-        self.V += dt * (k1_V + 2 * k2_V + 2 * k3_V + k4_V) / 6
-        self.m += dt * (k1_m + 2 * k2_m + 2 * k3_m + k4_m) / 6
-        self.h += dt * (k1_h + 2 * k2_h + 2 * k3_h + k4_h) / 6
-        self.n += dt * (k1_n + 2 * k2_n + 2 * k3_n + k4_n) / 6
+        self.V += self.dt* (k1_V + 2 * k2_V + 2 * k3_V + k4_V) / 6
+        self.m += self.dt* (k1_m + 2 * k2_m + 2 * k3_m + k4_m) / 6
+        self.h += self.dt* (k1_h + 2 * k2_h + 2 * k3_h + k4_h) / 6
+        self.n += self.dt* (k1_n + 2 * k2_n + 2 * k3_n + k4_n) / 6
 
 
 def main():
@@ -124,15 +127,14 @@ def main():
     time = np.arange(0, T, dt)
     I = np.zeros(len(time))
     I[int(0.5/dt):int(1.0/dt)] = 15.0
-
+    
     # Create neuron
     neuron = HodgkinHuxleyNeuron()
     
     # Record data
     V_record = []
     for i, t in enumerate(time):
-        neuron.I_ext = I[i]
-        neuron.step(dt)
+        neuron.step(I[i])
         V_record.append(neuron.V)
     
     # Plot
