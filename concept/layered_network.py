@@ -26,17 +26,17 @@ class LayeredNetworkGraph(object):
         self.node_positions = self.get_node_positions()
 
         """REMOVE THIS ALL LATER:"""
-        self.node_labels = {nn : str(nn) for nn in range(4*n)}
-        self.layout = nx.spring_layout
+        # self.node_labels = {nn : str(nn) for nn in range(4*n)}
+        # self.layout = nx.spring_layout
 
-        if ax:
-            self.ax = ax
-        else:
-            fig = plt.figure()
-            self.ax = fig.add_subplot(111, projection='3d')
+        # if ax:
+        #     self.ax = ax
+        # else:
+        #     fig = plt.figure()
+        #     self.ax = fig.add_subplot(111, projection='3d')
 
-        # compute layout and plot
-        self.draw()
+        # # compute layout and plot
+        # self.draw()
 
     def get_nodes(self):
         self.nodes = []
@@ -154,7 +154,7 @@ class LayeredNetworkGraph(object):
         plt.title("Neuron Activity in Network")
         plt.show()
 
-        
+        return V_record, time
 
         
 

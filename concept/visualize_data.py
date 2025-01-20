@@ -39,7 +39,7 @@ def calc_potentials_per_layer(network, n):
         for node in indices:
             if node not in V_record:
                 print(f"Warning: No data recorded for node {node}")
-            for t, V in enumerate(V_record[node]):
+            for t, V in zip(time, V_record[node]):
                 if V > -54.387:
                     neurons_reached += 1
                     timing.append(t)
@@ -58,17 +58,17 @@ def calc_potentials_per_layer(network, n):
 def time_between_spiking(network, n, start, end):
     V_record, time = network.run_hh_network()
 
-    for t, V in enumerate(V_record[start]):
+    for t, V in zip(time, V_record[start]):
         if V > -54.387:
             start_time = t
             break
 
-    for t, V in enumerate(V_record[end]):
+    for t, V in zip(time, V_record[end]):
         if V > -54.387:
             end_time = t
             break
 
-    print(start_time - end_time)
+    print(end_time - start_time, 'ms')
 
 
 if __name__ == "__main__":
@@ -81,4 +81,4 @@ if __name__ == "__main__":
     network = LayeredNetworkGraph([g, h, i])
     #visualize_hh_network(network, n)
     #calc_potentials_per_layer(network, n)
-    time_between_spiking(network, n, (0,0), (49,2))
+    time_between_spiking(network, n, (0,0), (40,2))
