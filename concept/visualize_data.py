@@ -40,7 +40,7 @@ def calc_potentials_per_layer(network, n):
             if node not in V_record:
                 print(f"Warning: No data recorded for node {node}")
             for t, V in zip(time, V_record[node]):
-                if V > -54.387:
+                if V > -50:
                     neurons_reached += 1
                     timing.append(t)
                     print(f"Node {node} spiked at time {t} with potential {V}")
@@ -59,12 +59,12 @@ def time_between_spiking(network, n, start, end):
     V_record, time = network.run_hh_network()
 
     for t, V in zip(time, V_record[start]):
-        if V > -54.387:
+        if V > -50:
             start_time = t
             break
 
     for t, V in zip(time, V_record[end]):
-        if V > -54.387:
+        if V > -50:
             end_time = t
             break
 
@@ -72,13 +72,16 @@ def time_between_spiking(network, n, start, end):
 
 
 if __name__ == "__main__":
-    n = 50
-    g = nx.erdos_renyi_graph(n, p=0.4)
-    h = nx.erdos_renyi_graph(n, p=0.4)
-    i = nx.erdos_renyi_graph(n, p=0.4)
+    n = 500
+    k = round(n / 67)
+    p = 0.0001
+    g = nx.watts_strogatz_graph(n, k, p)
+    h = nx.watts_strogatz_graph(n, k, p)
+    i = nx.watts_strogatz_graph(n, k, p)
+    combined_networks = [g, h, i]
 
     # Create the layered network
-    network = LayeredNetworkGraph([g, h, i])
+    network = LayeredNetworkGraph(combined_networks)
     #visualize_hh_network(network, n)
     #calc_potentials_per_layer(network, n)
-    time_between_spiking(network, n, (0,0), (40,2))
+    time_between_spiking(network, n, (0,0), ((n - 1), (len(combined_networks) - 1)))

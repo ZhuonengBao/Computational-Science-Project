@@ -56,7 +56,7 @@ class LayeredNetworkGraph(object):
             self.edges_within_layers.extend([((post_syn, i), (pre_syn, i)) for post_syn, pre_syn in g.edges()])
     
     def get_edges_between_layers(self, prob=0.025):
-        #TODO: implement this function with the desired amount of connections and with multiple connections per node
+        """Forms connections between nodes from different layers, thus connecting the layers"""
         self.edges_between_layers = []
         for z1, g in enumerate(self.graphs[:-1]):
             z2 = z1 + 1
@@ -68,9 +68,6 @@ class LayeredNetworkGraph(object):
                 # Randomly connect node1 and node2 with probability prob
                     if random.random() < prob:
                         self.edges_between_layers.append(((node1, z1), (node2, z2)))
-
-            # shared_nodes = set(g.nodes()) & set(h.nodes())
-            # self.edges_between_layers.extend([((node, z1), (node, z2)) for node in shared_nodes])
 
     def create_combined_network(self):
         """Combine all layers into a single network with inter-layer connections."""
@@ -100,28 +97,15 @@ class LayeredNetworkGraph(object):
         }
         return node_positions
 
-    # def get_node_positions(self, *args, **kwargs):
-    #     composition = self.graphs[0]
-    #     for h in self.graphs[1:]:
-    #         composition = nx.compose(composition, h)
-
-    #     pos = self.layout(composition, *args, **kwargs)
-
-    #     self.node_positions = dict()
-    #     for z, g in enumerate(self.graphs):
-    #         self.node_positions.update({(node, z) : (*pos[node], z) for node in g.nodes()})
-
     def run_hh_network(self):
         # Parameters
-        T = 50  # Total simulation time (ms)
-        dt = 0.01  # Time step (ms)
+        T = 40
+        dt = 0.01
         time = np.arange(0, T, dt)
-        n_neighbours_to_stim = 10
-        synaptic_strength = 0.000000275 / (n_neighbours_to_stim)
-        
-        # synaptic_strength = 0.5  # Default synaptic weight
+        n_neighbours_to_stim = 10 # Amount of neighbouring action potentials needed to stimulate a neuron
+        synaptic_strength = 0.000000275 / n_neighbours_to_stim
 
-        # Create a record for membrane potentials
+        # Record for membrane potentials
         V_record = {node: [] for node in self.combined_network.nodes()}
 
         # Simulation loop
@@ -129,16 +113,15 @@ class LayeredNetworkGraph(object):
             # Loop through all neurons in the network
             for node in self.combined_network.nodes():
                 neuron = self.combined_network.nodes[node]['neuron']
-                I_syn = 0.0  # Initialize synaptic current
+                I_syn = 0.0
 
                 # Compute synaptic input from neighbors
                 for neighbor in self.combined_network.neighbors(node):
                     neighbor_neuron = self.combined_network.nodes[neighbor]['neuron']
-                    weight = self.combined_network[node][neighbor].get('weight', synaptic_strength)  # Synaptic weight
-                    tau = 5.0  # Synaptic decay time constant
+                    tau = 5.0 # Synaptic decay time constant
 
-                    # Add weighted synaptic input (you already use voltage difference)
-                    I_syn += weight * np.exp(-(neuron.V - neighbor_neuron.V) / tau)
+                    # Add synaptic input
+                    I_syn += synaptic_strength * np.exp(-(neuron.V - neighbor_neuron.V) / tau)
 
                 # Update neuron with external current + synaptic current
                 neuron.step(dt, I_syn)
@@ -207,9 +190,9 @@ class LayeredNetworkGraph(object):
 if __name__ == '__main__':
     # define graphs
     n = 50
-    g = nx.erdos_renyi_graph(n, p=0.4)
-    h = nx.erdos_renyi_graph(n, p=0.4)
-    i = nx.erdos_renyi_graph(n, p=0.4)
+    g = nx.erdos_renyi_graph(n, p=0.3)
+    h = nx.erdos_renyi_graph(n, p=0.3)
+    i = nx.erdos_renyi_graph(n, p=0.3)
 
     # node_labels = {nn : str(nn) for nn in range(4*n)}
 
