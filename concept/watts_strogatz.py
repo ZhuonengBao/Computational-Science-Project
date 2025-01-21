@@ -48,14 +48,14 @@ T = 200.0
 dt = 0.01
 time = np.arange(0, T, dt)
 
-for i in range(n_neurons - 1):
+for i in range(10):
     network.nodes[i]['neuron'].I_ext = 7.5
 
-# network.nodes[0]['neuron'].I_ext = 7.5
-# network.nodes[1]['neuron'].I_ext = 7.5
-# network.nodes[2]['neuron'].I_ext = 7.5
-# network.nodes[3]['neuron'].I_ext = 7.5
-# network.nodes[4]['neuron'].I_ext = 7.5
+    # network.nodes[0]['neuron'].I_ext = 7.5
+    # network.nodes[1]['neuron'].I_ext = 7.5
+    # network.nodes[2]['neuron'].I_ext = 7.5
+    # network.nodes[3]['neuron'].I_ext = 7.5
+    # network.nodes[4]['neuron'].I_ext = 7.5
 
 V_record = {node: [] for node in network.nodes()}
 
