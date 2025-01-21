@@ -99,26 +99,29 @@ class HodgkinHuxleyNeuron:
         k1_h = self.dh_dt(V, h)
         k1_n = self.dn_dt(V, n)
 
-        k2_V = self.dV_dt(I, V + self.dt* k1_V / 2, m + self.dt* k1_m / 2, h + self.dt* k1_h / 2, n + self.dt* k1_n / 2)
-        k2_m = self.dm_dt(V + self.dt* k1_V / 2, m + self.dt* k1_m / 2)
-        k2_h = self.dh_dt(V + self.dt* k1_V / 2, h + self.dt* k1_h / 2)
-        k2_n = self.dn_dt(V + self.dt* k1_V / 2, n + self.dt* k1_n / 2)
+        k2_V = self.dV_dt(I, V + self.dt * k1_V / 2, m + self.dt *
+                          k1_m / 2, h + self.dt * k1_h / 2, n + self.dt * k1_n / 2)
+        k2_m = self.dm_dt(V + self.dt * k1_V / 2, m + self.dt * k1_m / 2)
+        k2_h = self.dh_dt(V + self.dt * k1_V / 2, h + self.dt * k1_h / 2)
+        k2_n = self.dn_dt(V + self.dt * k1_V / 2, n + self.dt * k1_n / 2)
 
-        k3_V = self.dV_dt(I, V + self.dt* k2_V / 2, m + self.dt* k2_m / 2, h + self.dt* k2_h / 2, n + self.dt* k2_n / 2)
-        k3_m = self.dm_dt(V + self.dt* k2_V / 2, m + self.dt* k2_m / 2)
-        k3_h = self.dh_dt(V + self.dt* k2_V / 2, h + self.dt* k2_h / 2)
-        k3_n = self.dn_dt(V + self.dt* k2_V / 2, n + self.dt* k2_n / 2)
+        k3_V = self.dV_dt(I, V + self.dt * k2_V / 2, m + self.dt *
+                          k2_m / 2, h + self.dt * k2_h / 2, n + self.dt * k2_n / 2)
+        k3_m = self.dm_dt(V + self.dt * k2_V / 2, m + self.dt * k2_m / 2)
+        k3_h = self.dh_dt(V + self.dt * k2_V / 2, h + self.dt * k2_h / 2)
+        k3_n = self.dn_dt(V + self.dt * k2_V / 2, n + self.dt * k2_n / 2)
 
-        k4_V = self.dV_dt(I, V + self.dt* k3_V, m + self.dt* k3_m, h + self.dt* k3_h, n + self.dt* k3_n)
-        k4_m = self.dm_dt(V + self.dt* k3_V, m + self.dt* k3_m)
-        k4_h = self.dh_dt(V + self.dt* k3_V, h + self.dt* k3_h)
-        k4_n = self.dn_dt(V + self.dt* k3_V, n + self.dt* k3_n)
+        k4_V = self.dV_dt(I, V + self.dt * k3_V, m + self.dt *
+                          k3_m, h + self.dt * k3_h, n + self.dt * k3_n)
+        k4_m = self.dm_dt(V + self.dt * k3_V, m + self.dt * k3_m)
+        k4_h = self.dh_dt(V + self.dt * k3_V, h + self.dt * k3_h)
+        k4_n = self.dn_dt(V + self.dt * k3_V, n + self.dt * k3_n)
 
         # Update values
-        self.V += self.dt* (k1_V + 2 * k2_V + 2 * k3_V + k4_V) / 6
-        self.m += self.dt* (k1_m + 2 * k2_m + 2 * k3_m + k4_m) / 6
-        self.h += self.dt* (k1_h + 2 * k2_h + 2 * k3_h + k4_h) / 6
-        self.n += self.dt* (k1_n + 2 * k2_n + 2 * k3_n + k4_n) / 6
+        self.V += self.dt * (k1_V + 2 * k2_V + 2 * k3_V + k4_V) / 6
+        self.m += self.dt * (k1_m + 2 * k2_m + 2 * k3_m + k4_m) / 6
+        self.h += self.dt * (k1_h + 2 * k2_h + 2 * k3_h + k4_h) / 6
+        self.n += self.dt * (k1_n + 2 * k2_n + 2 * k3_n + k4_n) / 6
 
 
 def main():
@@ -132,11 +135,11 @@ def main():
     # Post-Synaptic constants
     weight = 0.1
     tau = 30
-    
+
     # Stimulus
     I_inp = np.zeros(len(time))
     I_inp[int(0.5/dt):int(1.0/dt)] = 15.0
-    
+
     # Record data
     V_record = []
     I_out = np.zeros(len(time))
@@ -146,21 +149,20 @@ def main():
         V_record.append(neuron.V)
         I_out[i] = weight * np.exp(-(-65.0 - neuron.V) / tau)
 
-    
-
     # Plot
     plt.figure(figsize=(8, 6))
-        
+
     # Membrane potential V
     plt.subplot(2, 1, 2)
     plt.plot(time / time[615], V_record)
-    plt.plot(time / time[615], np.full(len(time), -65), linestyle='--', color='gray', label='Resting')
+    plt.plot(time / time[615], np.full(len(time), -65),
+             linestyle='--', color='gray', label='Resting')
     plt.title('Membrane Potential')
     plt.xlabel('Time (ms)')
     plt.ylabel('Voltage (mV)')
     plt.grid()
     plt.legend()
-    
+
     # Currents
     plt.subplot(2, 1, 1)
     plt.plot(time / time[615], I_inp, label='Input')
