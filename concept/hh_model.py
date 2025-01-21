@@ -40,27 +40,43 @@ class HodgkinHuxleyNeuron:
         self.I_ext = 0.0
 
     # Ionic currents
-    def I_Na(self, V, m, h): return self.g_Na * (m**3) * h * (V - self.E_Na)
-    def I_K(self, V, n): return self.g_K * (n**4) * (V - self.E_K)
-    def I_L(self, V): return self.g_L * (V - self.E_L)
+    def I_Na(self, V, m, h):
+        return self.g_Na * (m**3) * h * (V - self.E_Na)
+
+    def I_K(self, V, n):
+        return self.g_K * (n**4) * (V - self.E_K)
+
+    def I_L(self, V):
+        return self.g_L * (V - self.E_L)
 
     # Gating variable dynamics
-    def alpha_m(self, V): return 0.1 * (V + 40) / (1 - np.exp(-(V + 40) / 10))
-    def beta_m(self, V): return 4.0 * np.exp(-(V + 65) / 18)
-    def alpha_h(self, V): return 0.07 * np.exp(-(V + 65) / 20)
-    def beta_h(self, V): return 1 / (1 + np.exp(-(V + 35) / 10))
-    def alpha_n(self, V): return 0.01 * (V + 55) / (1 - np.exp(-(V + 55) / 10))
-    def beta_n(self, V): return 0.125 * np.exp(-(V + 65) / 80)
+    def alpha_m(self, V):
+        return 0.1 * (V + 40) / (1 - np.exp(-(V + 40) / 10))
+
+    def beta_m(self, V):
+        return 4.0 * np.exp(-(V + 65) / 18)
+
+    def alpha_h(self, V):
+        return 0.07 * np.exp(-(V + 65) / 20)
+
+    def beta_h(self, V):
+        return 1 / (1 + np.exp(-(V + 35) / 10))
+
+    def alpha_n(self, V):
+        return 0.01 * (V + 55) / (1 - np.exp(-(V + 55) / 10))
+
+    def beta_n(self, V):
+        return 0.125 * np.exp(-(V + 65) / 80)
 
     # Derivatives for gating variables
-    def dm_dt(self, V, m): return self.alpha_m(
-        V) * (1 - m) - self.beta_m(V) * m
+    def dm_dt(self, V, m):
+        return self.alpha_m(V) * (1 - m) - self.beta_m(V) * m
 
-    def dh_dt(self, V, h): return self.alpha_h(
-        V) * (1 - h) - self.beta_h(V) * h
+    def dh_dt(self, V, h):
+        return self.alpha_h(V) * (1 - h) - self.beta_h(V) * h
 
-    def dn_dt(self, V, n): return self.alpha_n(
-        V) * (1 - n) - self.beta_n(V) * n
+    def dn_dt(self, V, n):
+        return self.alpha_n(V) * (1 - n) - self.beta_n(V) * n
 
     # Membrane potential
     def dV_dt(self, V, m, h, n):
@@ -69,13 +85,6 @@ class HodgkinHuxleyNeuron:
         I_L = self.I_L(V)
         I_ion = I_Na + I_K + I_L
         return (self.I_ext - I_ion) / self.C_m
-
-    # # Synaptic current
-    # def synaptic_current(self, t, t_firings, w, tau):
-    #     I_syn = np.zeros_like(t)
-    #     for t_fire in t_firings:
-    #         I_syn += w * np.exp(-(t - t_fire) / tau) * (t >= t_fire)
-    #     return I_syn
 
     # Membrane potential with synaptic current
     def dV_dt(self, V, m, h, n, I_syn):
