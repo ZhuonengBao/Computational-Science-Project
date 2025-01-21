@@ -134,12 +134,3 @@ if __name__ == '__main__':
     ax.set_axis_off()
     plt.show()
 
-
-
-
-
-
-
-
-
-
