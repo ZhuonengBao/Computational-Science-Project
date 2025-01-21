@@ -3,6 +3,23 @@ from hh_model import HodgkinHuxleyNeuron
 from layered_network import LayeredNetworkGraph
 import networkx as nx
 
+
+
+def generate_erdos_renyi_digraph(n, p):
+    G = nx.erdos_renyi_graph(n, p, directed=True)
+
+    # Remove bidirected edges
+    for u, v in list(G.edges()):
+        if G.has_edge(v, u):
+            G.remove_edge(v, u)
+
+    # Create neuron objects
+    for node in G.nodes():
+        G.nodes[node]['neuron'] = HodgkinHuxleyNeuron()
+
+    return G
+
+
 def visualize_hh_network(network, n):
 
     # Run the Hodgkin-Huxley model and get the data
@@ -25,6 +42,7 @@ def visualize_hh_network(network, n):
     plt.ylabel("Membrane Potential (mV)")
     plt.title("Selected Neurons Activity")
     plt.show()
+
 
 def calc_potentials_per_layer(network, n):
 
@@ -55,6 +73,7 @@ def calc_potentials_per_layer(network, n):
     plt.title("Spike Timing Across Layers")
     plt.show()
 
+
 def time_between_spiking(network, n, start, end):
     V_record, time = network.run_hh_network()
 
@@ -71,17 +90,13 @@ def time_between_spiking(network, n, start, end):
     print(end_time - start_time, 'ms')
 
 
-if __name__ == "__main__":
-    n = 500
-    k = round(n / 67)
-    p = 0.0001
-    g = nx.watts_strogatz_graph(n, k, p)
-    h = nx.watts_strogatz_graph(n, k, p)
-    i = nx.watts_strogatz_graph(n, k, p)
-    combined_networks = [g, h, i]
 
-    # Create the layered network
-    network = LayeredNetworkGraph(combined_networks)
-    #visualize_hh_network(network, n)
-    #calc_potentials_per_layer(network, n)
-    time_between_spiking(network, n, (0,0), ((n - 1), (len(combined_networks) - 1)))
+if __name__ == "__main__":
+    n = 50
+    g = generate_erdos_renyi_digraph(n, p=0.3)
+    h = generate_erdos_renyi_digraph(n, p=0.3)
+    i = generate_erdos_renyi_digraph(n, p=0.3)
+
+    network = LayeredNetworkGraph([g, h, i])
+    network.run_hh_network()
+
