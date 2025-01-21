@@ -108,8 +108,10 @@ class LayeredNetworkGraph(object):
                     neighbor_neuron = self.combined_network.nodes[neighbor]['neuron']
                     tau = 5.0 # Synaptic decay time constant
 
-                    # Add synaptic input
-                    I_syn += synaptic_strength * np.exp(-(neuron.V - neighbor_neuron.V) / tau)
+                    if neighbor_neuron.last_spike_time is not None:
+                        t_fire = neighbor_neuron.last_spike_time
+                        if t >= t_fire:  # Apply synaptic current only after firing
+                            I_syn += synaptic_strength * np.exp(-(t - t_fire) / tau)
 
                 # Update neuron with external current + synaptic current
                 neuron.step(dt, I_syn)
