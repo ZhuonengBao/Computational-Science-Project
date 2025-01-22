@@ -39,6 +39,9 @@ class HodgkinHuxleyNeuron:
         # External current
         self.I_ext = 0.0
 
+        # Last time neuron fired
+        self.last_spike_time = None
+
     # Ionic currents
     def I_Na(self, V, m, h):
         return self.g_Na * (m**3) * h * (V - self.E_Na)
@@ -129,6 +132,13 @@ class HodgkinHuxleyNeuron:
         self.m += dt * (k1_m + 2 * k2_m + 2 * k3_m + k4_m) / 6
         self.h += dt * (k1_h + 2 * k2_h + 2 * k3_h + k4_h) / 6
         self.n += dt * (k1_n + 2 * k2_n + 2 * k3_n + k4_n) / 6
+
+        if self.V > -50 and self.last_spike_time is None:
+            # Record the time of the spike
+            self.last_spike_time = dt  
+        elif self.V <= -50:
+            # Reset if not firing
+            self.last_spike_time = None  
 
 
 def main():
