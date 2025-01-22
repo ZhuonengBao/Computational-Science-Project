@@ -96,7 +96,9 @@ if __name__ == "__main__":
     g = generate_erdos_renyi_digraph(n, p=0.3)
     h = generate_erdos_renyi_digraph(n, p=0.3)
     i = generate_erdos_renyi_digraph(n, p=0.3)
-
-    network = LayeredNetworkGraph([g, h, i])
-    network.run_hh_network()
+    # Create the layered network
+    combined_networks = [g, h, i]
+    network = LayeredNetworkGraph(combined_networks)
+    time_between_spiking(network, n, (0,0), ((n - 1), (len(combined_networks) - 1)))
+    
 

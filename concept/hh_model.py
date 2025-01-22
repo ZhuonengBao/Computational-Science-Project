@@ -40,7 +40,7 @@ class HodgkinHuxleyNeuron:
 
         # Last time neuron fired
         self.last_spike_time = None
-    
+
     # Ionic currents
     def I_Na(self, V, m, h): return self.g_Na * (m**3) * h * (V - self.E_Na)
     def I_K(self, V, n): return self.g_K * (n**4) * (V - self.E_K)
@@ -66,14 +66,7 @@ class HodgkinHuxleyNeuron:
         I_L = self.I_L(V)
         I_ion = I_Na + I_K + I_L
         return (self.I_ext - I_ion) / self.C_m
-    
-    # # Synaptic current
-    # def synaptic_current(self, t, t_firings, w, tau):
-    #     I_syn = np.zeros_like(t)
-    #     for t_fire in t_firings:
-    #         I_syn += w * np.exp(-(t - t_fire) / tau) * (t >= t_fire)
-    #     return I_syn
-    
+
     # Membrane potential with synaptic current
     def dV_dt(self, V, m, h, n, I_syn):
         I_Na = self.I_Na(V, m, h)
@@ -131,11 +124,12 @@ def main():
     # Create neuron
     neuron = HodgkinHuxleyNeuron()
     neuron.I_ext = 10.0  # External current
+    I_syn = 0
     
     # Record data
     V_record = []
     for t in time:
-        neuron.step(dt)
+        neuron.step(dt, I_syn)
         V_record.append(neuron.V)
     
     # Plot

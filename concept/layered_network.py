@@ -90,9 +90,9 @@ class LayeredNetworkGraph(object):
         T = 40
         dt = 0.01
         time = np.arange(0, T, dt)
-        n_neighbours_to_stim = 10 # Amount of neighbouring action potentials needed to stimulate a neuron
-        synaptic_strength = 0.000000275 / n_neighbours_to_stim
-
+        # n_neighbours_to_stim = 10 # Amount of neighbouring action potentials needed to stimulate a neuron
+        # synaptic_strength = 0.000000275 / n_neighbours_to_stim
+        synaptic_strength = 10
         # Record for membrane potentials
         V_record = {node: [] for node in self.combined_network.nodes()}
 
