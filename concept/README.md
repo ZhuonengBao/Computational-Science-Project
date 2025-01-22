@@ -58,7 +58,6 @@ The following Python libraries are required:
 
 Install the dependencies with:
 
-```bash
 pip install numpy matplotlib networkx scipy
 
 ---
