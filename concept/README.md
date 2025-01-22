@@ -64,12 +64,12 @@ pip install numpy matplotlib networkx scipy
 ---
 
 ## Usage
-- plot a single neuron: run hh_model.py
-- simulate multi layered network: run layered_network.py
-- plot a few neurons per layer in a multi layered network: call visualize_hh_network(network, n) in main of visualize_data.py
-- calculate time between a start and end neuron spiking: call time_between_spiking(network, n, start, end) in main of visualize_data.py. start and end need to be structured as follow: (node, layer)
-- plot time between spiking for different connectivities within layers: call spiking_time_within(n, trials, total_replace) in main of visualize_data.py.
-- plot time between spiking for different connectivities bewteen layers: call spiking_time_between(n, trials, total_replace) in main of visualize_data.py.
+- `plot a single neuron`: run hh_model.py
+- `simulate multi layered network`: run layered_network.py
+- `plot a few neurons per layer in a multi layered network`: call visualize_hh_network(network, n) in main of visualize_data.py
+- `calculate time between a start and end neuron spiking`: call time_between_spiking(network, n, start, end) in main of visualize_data.py. start and end need to be structured as follow: (node, layer)
+- `plot time between spiking for different connectivities within layers`: call spiking_time_within(n, trials, total_replace) in main of visualize_data.py.
+- `plot time between spiking for different connectivities bewteen layers`: call spiking_time_between(n, trials, total_replace) in main of visualize_data.py.
 
 
 
