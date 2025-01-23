@@ -2,8 +2,9 @@ import matplotlib.pyplot as plt
 from hh_model import HodgkinHuxleyNeuron
 from layered_network import LayeredNetworkGraph
 import networkx as nx
-import pandas as pd
 import numpy as np
+import scipy.stats as st
+import random
 
 def visualize_hh_network(network, n):
     """
@@ -65,30 +66,55 @@ def time_between_spiking(network, start, end):
     """
     This function calculated the time difference in spiking of a start and end neuron
     """
-    V_record, time = network.run_hh_network()
 
+    #combined_network = network.combined_network
+    #distances = nx.shortest_path_length(combined_network, source=start)
+
+    # Find the node with the maximum distance
+    # end, max_distance = max(distances.items(), key=lambda x: x[1])
+    # print(max_distance, end)
+
+    # record voltages with network
+    V_record, time = network.run_hh_network()
+    fired = True
+    time_interval = np.nan
+
+    # check the time the start neuron gets to an action potential
     for t, V in zip(time, V_record[start]):
+        # an action potential occurs when the threshold is reached
         if V > -54.387:
             start_time = t
             break
 
+    # check the time an action potential occurs in the end neuron
     for t, V in zip(time, V_record[end]):
+        # an action potential occurs when the threshold is reached
         if V > -54.387:
             end_time = t
             break
 
-        end_time = start_time
+        # don't count if the neuron did not fire
+        fired = False
 
-    time_interval = end_time - start_time
-    print(end_time - start_time, 'ms')
+    # calculate time between start and end neuron firing
+    if fired:
+        time_interval = end_time - start_time
+        print(time_interval, 'ms')
+
     return time_interval
 
-def plot_spiking_time(n, start, end, trials):
-    properties = np.linspace(0, 1, 5)
-    data = []
+def plot_spiking_time_within(n, trials, total_replace):
+    """
+    This function plots time interval for different connectivities (could be changed to other variable later on)
+    """
+    properties = np.linspace(0.5, 1, 2)
 
+    mean_time = []
+    lower_CI_list = []
+    higher_CI_list = []
+    connectivity_list = []
     for connectivity in properties:
-        results = []
+        data = []
         for _ in range(trials):
             g = nx.erdos_renyi_graph(n, p= connectivity)
             h = nx.erdos_renyi_graph(n, p= connectivity)
@@ -97,30 +123,101 @@ def plot_spiking_time(n, start, end, trials):
             # Create the layered network
             network = LayeredNetworkGraph([g, h, i])
 
-            time_interval = time_between_spiking(network, n, start, end)
-            data.append(time_interval)
+            start_nodes = [(random.randrange(0, network.activate - 1), 0) for _ in range(total_replace)]
+            end_nodes = [(random.randrange(0, n - 1), network.total_layers - 1) for _ in range(total_replace)]
+            replace_time = []
 
-            results.append((connectivity, np.mean(data), np.std(data)))
+            for start, end in zip(start_nodes, end_nodes):
+                time_interval = time_between_spiking(network, start, end)
 
-        df = pd.DataFrame(results, columns=["Connectivity", "Mean", "Std"])
+                if not np.isnan(time_interval):
+                    replace_time.append(time_interval)
 
-        # Plot the results
-        plt.errorbar(df["Connectivity"], df["Mean"], yerr=df["Std"], fmt='o', capsize=5, label="Spike Timing")
-        plt.xlabel('connectivity')
-        plt.ylabel('time between first and last neuron')
-        plt.show()
-   
+            if replace_time:    
+                data.append(np.mean(replace_time))
+
+        if data:       
+            # calculate confidence interval
+            confidence_interval = st.t.interval(0.95, df=len(data)-1, loc=np.mean(data), scale=st.sem(data)) 
+            lower_CI, higher_CI = confidence_interval
+            lower_CI_list.append(lower_CI)
+            higher_CI_list.append(higher_CI)
+
+            mean_time.append(np.mean(data))
+            connectivity_list.append(connectivity)
+
+    #plot time per connectivity with confidence interval.
+    plt.plot(connectivity_list, mean_time)
+    plt.ylim(0, 20)
+    plt.fill_between(connectivity_list, lower_CI_list, higher_CI_list, alpha=0.1)
+    plt.xlabel('connectivity')
+    plt.ylabel('time between first and last neuron')
+    plt.show()
+
+def plot_spiking_time_between(n, trials, total_replace):
+    """
+    This function plots time interval for different connectivities (could be changed to other variable later on)
+    """
+    properties = np.linspace(0.01, 0.05, 2)
+
+    mean_time = []
+    lower_CI_list = []
+    higher_CI_list = []
+    prob_list = []
+    for prob in properties:
+        data = []
+        for _ in range(trials):
+            g = nx.erdos_renyi_graph(n, p= 0.4)
+            h = nx.erdos_renyi_graph(n, p= 0.4)
+            i = nx.erdos_renyi_graph(n, p= 0.4)
+
+            # Create the layered network
+            network = LayeredNetworkGraph([g, h, i], prob)
+
+            start_nodes = [(random.randrange(0, network.activate - 1), 0) for _ in range(total_replace)]
+            end_nodes = [(random.randrange(0, n - 1), network.total_layers - 1) for _ in range(total_replace)]
+            replace_time = []
+
+            for start, end in zip(start_nodes, end_nodes):
+                time_interval = time_between_spiking(network, start, end)
+
+                if not np.isnan(time_interval):
+                    replace_time.append(time_interval)
+
+            if replace_time:  
+                data.append(np.mean(replace_time))
+
+        if data:       
+            # calculate confidence interval
+            confidence_interval = st.t.interval(0.95, df=len(data)-1, loc=np.mean(data), scale=st.sem(data)) 
+            lower_CI, higher_CI = confidence_interval
+            lower_CI_list.append(lower_CI)
+            higher_CI_list.append(higher_CI)
+
+            mean_time.append(np.mean(data))
+            prob_list.append(prob)
+
+    #plot time per connectivity with confidence interval.
+    plt.plot(prob_list, mean_time)
+    plt.ylim(0, 20)
+    plt.fill_between(prob_list, lower_CI_list, higher_CI_list, alpha=0.1)
+    plt.xlabel('connectivity')
+    plt.ylabel('time between first and last neuron')
+    plt.show()
+
 
 if __name__ == "__main__":
     n = 50
     g = nx.erdos_renyi_graph(n, p=0.4)
     h = nx.erdos_renyi_graph(n, p=0.4)
     i = nx.erdos_renyi_graph(n, p=0.4)
+    prob = 0.025
 
     # Create the layered network
-    network = LayeredNetworkGraph([g, h, i])
+    network = LayeredNetworkGraph([g, h, i], prob)
     
     #visualize_hh_network(network, n)
     #calc_potentials_per_layer(network, n)
-    #time_between_spiking(network, n, (0,0), (40,2))
-    plot_spiking_time(n, (0,0), (49,2), 3)
+    #time_between_spiking(network, (0,0))
+    #plot_spiking_time_within(n, 2, 2)
+    plot_spiking_time_between(n, 2, 2)

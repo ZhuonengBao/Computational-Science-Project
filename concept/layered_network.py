@@ -15,9 +15,11 @@ from hh_model import HodgkinHuxleyNeuron
 
 class LayeredNetworkGraph(object):
 
-    def __init__(self, graphs):
+    def __init__(self, graphs, prob):
         self.graphs = graphs
         self.total_layers = len(graphs)
+        self.activate = 3
+        self.prob = prob
 
         self.get_nodes()
         self.get_edges_within_layers()
@@ -45,7 +47,7 @@ class LayeredNetworkGraph(object):
                 g.nodes[node]["neuron"] = HodgkinHuxleyNeuron()
             self.nodes.extend([(node, i) for node in g.nodes()])
 
-        for i in range(3):
+        for i in range(self.activate):
             node, layer = self.nodes[i]  # Unpack the node and layer index
             neuron = self.graphs[layer].nodes[node]["neuron"]  # Access the neuron object
             neuron.I_ext = 7.5  # Apply external current
@@ -55,7 +57,7 @@ class LayeredNetworkGraph(object):
         for i, g in enumerate(self.graphs):
             self.edges_within_layers.extend([((post_syn, i), (pre_syn, i)) for post_syn, pre_syn in g.edges()])
     
-    def get_edges_between_layers(self, prob=0.025):
+    def get_edges_between_layers(self):
         #TODO: implement this function with the desired amount of connections and with multiple connections per node
         self.edges_between_layers = []
         for z1, g in enumerate(self.graphs[:-1]):
@@ -66,7 +68,7 @@ class LayeredNetworkGraph(object):
             # Iterate over all nodes in layer z2 (next layer)
                 for node2 in h.nodes():
                 # Randomly connect node1 and node2 with probability prob
-                    if random.random() < prob:
+                    if random.random() < self.prob:
                         self.edges_between_layers.append(((node1, z1), (node2, z2)))
 
             # shared_nodes = set(g.nodes()) & set(h.nodes())
@@ -145,18 +147,17 @@ class LayeredNetworkGraph(object):
                 V_record[node].append(neuron.V)
 
         # Plotting results
-        plt.figure(figsize=(12, 8))
-        for node, voltages in V_record.items():
-            plt.plot(time, voltages, label=f'Neuron {node}')
-        plt.legend()
-        plt.xlabel("Time (ms)")
-        plt.ylabel("Membrane Potential (mV)")
-        plt.title("Neuron Activity in Network")
-        plt.show()
+        # plt.figure(figsize=(12, 8))
+        # for node, voltages in V_record.items():
+        #     plt.plot(time, voltages, label=f'Neuron {node}')
+        # plt.legend()
+        # plt.xlabel("Time (ms)")
+        # plt.ylabel("Membrane Potential (mV)")
+        # plt.title("Neuron Activity in Network")
+        # plt.show()
 
         return V_record, time
 
-        
 
     # FOR VISUALIZATION (REMOVE LATER):
     def draw_nodes(self, nodes, *args, **kwargs):

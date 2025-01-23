@@ -125,7 +125,7 @@ def main():
     # Record data
     V_record = []
     for t in time:
-        neuron.step(dt)
+        neuron.step(dt, I_ext)
         V_record.append(neuron.V)
     
     # Plot
