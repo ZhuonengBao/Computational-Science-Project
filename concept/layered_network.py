@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Plot multi-graphs in 3D.
 """
@@ -12,139 +11,329 @@ from mpl_toolkits.mplot3d.art3d import Line3DCollection
 from hh_model import HodgkinHuxleyNeuron
 
 
-
 class LayeredNetworkGraph(object):
-    def __init__(self, graphs):
+
+    def __init__(self, layers, inter_prob=0.0, layout=nx.spring_layout, ax=None, verbose=False):
+        """Given an ordered list of graphs [g1, g2, ..., gn] that represent
+        different layers in a multi-layer network, plot the network in
+        3D with the different layers separated along the z-axis.
+
+        Within a layer, the corresponding graph defines the connectivity.
+        Between layers, nodes in subsequent layers are connected if
+        they have the same node ID.
+
+        Arguments:
+        ----------
+        graphs : list of networkx.Graph objects
+            List of graphs, one for each layer.
+
+        layout_func : function handle (default networkx.spring_layout)
+            Function used to compute the layout.
+
+        ax : mpl_toolkits.mplot3d.Axes3d instance or None (default None)
+            The axis to plot to. If None is given, a new figure and a new axis are created.
+
+        """
+
+        # book-keeping
+        self.layers = layers
         self.graphs = graphs
         self.total_layers = len(graphs)
 
+        self.inter_prob = inter_prob
+        self.layout = layout
+
+        # create internal representation of nodes and edges
+        self.get_graphs()
         self.get_nodes()
         self.get_edges_within_layers()
         self.get_edges_between_layers()
-        self.combined_network = self.create_combined_network()
-        self.node_positions = self.get_node_positions()
-      
+
+        # compute layout and plot
+        self.get_node_positions()
+
+        if verbose:
+            # Run your function
+            obj = self.run()
+            print(obj)
+
+            # Create a figure with 1 row and 2 columns for subplots
+            fig, axes = plt.subplots(1, 2, figsize=(20, 6))
+
+            # Assign axes[1] to the 3D plot
+            axes[1].set_axis_off()
+            # Assign 3D subplot to axes[1]
+            self.ax = fig.add_subplot(122, projection='3d')
+            self.ax.set_axis_off()  # Turn off the entire axis (including labels and ticks)
+
+            # Call the draw function for the 3D plot
+            self.draw()
+
+            # Plot the 2D results on axes[0]
+            axes[0].set_xlabel("Time (ms)")
+            axes[0].set_ylabel("Membrane Potential (mV)")
+            axes[0].set_title("Neuron Activity in Network")
+
+            # Plotting the 2D data for each neuron on axes[0]
+            T = 40.0
+            dt = 0.01
+            time = np.arange(0, T, dt)
+
+            for node, voltages in self.V_record.items():
+                # Ensure time and voltages have the same length
+                min_len = min(len(time), len(voltages))
+                axes[0].plot(time[:min_len], voltages[:min_len],
+                             label=f'Neuron {node}')
+
+            # axes[0].legend()
+
+            # Show the plot
+            plt.show()
+
+    def generate_erdos_renyi_digraph(self, n, p, s=''):
+        # Create an empty directed graph
+        G = nx.DiGraph()
+
+        # Add nodes with custom names
+        names = [s + str(i) for i in range(n)]
+        for name in names:
+            # Assuming HodgkinHuxleyNeuron() is defined elsewhere
+            G.add_node(name)
+
+        # Add edges based on Erdos-Renyi probability
+        for i, u in enumerate(names):
+            for j, v in enumerate(names):
+                if i != j and random.random() < p:
+                    G.add_edge(u, v)
+
+        # Remove bidirectional edges
+        for u, v in list(G.edges()):
+            if G.has_edge(v, u):
+                G.remove_edge(v, u)
+
+        # Create neuron objects
+        for node in G.nodes():
+            G.nodes[node]['neuron'] = HodgkinHuxleyNeuron()
+
+        return G
+
+    def get_graphs(self):
+        self.graphs = []
+
+        for n, p, s in self.layers:
+            self.graphs.append(self.generate_erdos_renyi_digraph(n, p, s))
 
     def get_nodes(self):
+        """Construct an internal representation of nodes with the format (node ID, layer)."""
         self.nodes = []
-        for i, g in enumerate(self.graphs):
-            for node in g.nodes:
-                g.nodes[node]["neuron"] = HodgkinHuxleyNeuron()
-            self.nodes.extend([(node, i) for node in g.nodes()])
 
-        for i in range(3):
-            node, layer = self.nodes[i]  # Unpack the node and layer index
-            neuron = self.graphs[layer].nodes[node]["neuron"]  # Access the neuron object
-            neuron.I_ext = 7.5  # Apply external current
-    
+        for z, g in enumerate(self.graphs):
+            self.nodes.extend([(node, z) for node in g.nodes()])
+
+        self.update = {}
+        for g in self.graphs:
+            self.update[g] = list(g.nodes())
+
     def get_edges_within_layers(self):
+        """Remap edges in the individual layers to the internal representations of the node IDs."""
         self.edges_within_layers = []
-        for i, g in enumerate(self.graphs):
-            self.edges_within_layers.extend([((post_syn, i), (pre_syn, i)) for post_syn, pre_syn in g.edges()])
-    
-    def get_edges_between_layers(self, prob=0.025):
+        for z, g in enumerate(self.graphs):
+            self.edges_within_layers.extend(
+                [((source, z), (target, z)) for source, target in g.edges()])
+
+    def get_edges_between_layers(self):
         """Forms connections between nodes from different layers, thus connecting the layers"""
         self.edges_between_layers = []
-        for z1, g in enumerate(self.graphs[:-1]):
+        for z1, h in enumerate(self.graphs[:-1]):
             z2 = z1 + 1
-            h = self.graphs[z2]
+            g = self.graphs[z2]
+
+            h_nodes = list(h.nodes())
 
             for node1 in g.nodes():
-            # Iterate over all nodes in layer z2 (next layer)
-                for node2 in h.nodes():
-                # Randomly connect node1 and node2 with probability prob
-                    if random.random() < prob:
-                        self.edges_between_layers.append(((node1, z1), (node2, z2)))
+                for node2 in h_nodes:
+                    if random.random() < self.inter_prob:
+                        h.add_node(node1)
+                        h.nodes[node1]['neuron'] = g.nodes[node1]['neuron']
+                        h.add_edge(node1, node2)
+                        self.edges_between_layers.append(
+                            ((node1, z2), (node2, z1)))
 
+    def get_node_positions(self, *args, **kwargs):
+        composition = self.graphs[0]
+        for h in self.graphs[1:]:
+            composition = nx.compose(composition, h)
 
-    def create_combined_network(self):
-        """Combine all layers into a single network with inter-layer connections."""
-        combined = nx.Graph()
+        pos = self.layout(composition, *args, **kwargs)
 
-        # Add nodes and edges from each layer
+        self.node_positions = dict()
         for z, g in enumerate(self.graphs):
-            for node in g.nodes:
-                combined.add_node((node, z), **g.nodes[node])  # Add layer info to nodes
-            for n1, n2 in g.edges:
-                combined.add_edge((n1, z), (n2, z), **g.edges[n1, n2])
+            self.node_positions.update(
+                {(node, z): (*pos[node], z) for node in g.nodes()})
 
-        # Add inter-layer edges
-        for (n1, z1), (n2, z2) in self.edges_between_layers:
-            combined.add_edge((n1, z1), (n2, z2))
+    def draw_nodes(self, nodes, *args, **kwargs):
+        x, y, z = zip(*[self.node_positions[node] for node in nodes])
+        self.ax.scatter(x, y, z, *args, **kwargs)
 
-        return combined
+    def draw_edges(self, edges, *args, **kwargs):
+        # Hardcoded arrow size
+        arrow_size = 0.1  # Control the size of the arrowhead here
 
-    def get_node_positions(self, layout=nx.spring_layout, *args, **kwargs):
-        """Compute 3D positions of nodes in the combined network."""
-        # Compute 2D layout for the combined graph
-        pos_2d = layout(self.combined_network, *args, **kwargs)
+        # Extract color from kwargs if it's passed
+        # Default to 'blue' if not provided
+        color = kwargs.get('color', 'blue')
 
-        # Add z-coordinate based on layer index
-        node_positions = {
-            node: (*pos_2d[node], node[1]) for node in self.combined_network.nodes
-        }
-        return node_positions
+        # Remove 'color' from kwargs to avoid conflict
+        kwargs = {key: value for key, value in kwargs.items() if key !=
+                  'color'}
 
-    def run_hh_network(self):
+        for source, target in edges:
+            # print((source, target))
+            start = self.node_positions[source]
+            end = self.node_positions[target]
+
+            # Calculate direction vector
+            direction = np.array(end) - np.array(start)
+            length = np.linalg.norm(direction)
+            direction /= length  # Normalize direction
+
+            # Set up the quiver to draw arrows
+            self.ax.quiver(start[0], start[1], start[2],
+                           direction[0], direction[1], direction[2],
+                           length=length, color=color,
+                           arrow_length_ratio=arrow_size, *args, **kwargs)
+
+    def get_extent(self, pad=0.1):
+        xyz = np.array(list(self.node_positions.values()))
+        xmin, ymin, _ = np.min(xyz, axis=0)
+        xmax, ymax, _ = np.max(xyz, axis=0)
+        dx = xmax - xmin
+        dy = ymax - ymin
+        return (xmin - pad * dx, xmax + pad * dx), \
+            (ymin - pad * dy, ymax + pad * dy)
+
+    def draw_plane(self, z, *args, **kwargs):
+        (xmin, xmax), (ymin, ymax) = self.get_extent(pad=0.1)
+        u = np.linspace(xmin, xmax, 10)
+        v = np.linspace(ymin, ymax, 10)
+        U, V = np.meshgrid(u, v)
+        W = z * np.ones_like(U)
+        self.ax.plot_surface(U, V, W, *args, **kwargs)
+
+    def draw_node_labels(self, *args, **kwargs):
+        for node, z in self.nodes:
+            self.ax.text(
+                *self.node_positions[(node, z)], node, *args, **kwargs)
+
+    def draw(self):
+
+        self.draw_edges(self.edges_within_layers,  color='k',
+                        alpha=0.3, linestyle='-', zorder=2)
+        self.draw_edges(self.edges_between_layers, color='k',
+                        alpha=0.3, linestyle='--', zorder=2)
+
+        for z in range(self.total_layers):
+            self.draw_plane(z, alpha=0.2, zorder=1)
+            self.draw_nodes(
+                [node for node in self.nodes if node[1] == z], s=150, zorder=3)
+
+        self.draw_node_labels(horizontalalignment='center',
+                              verticalalignment='center',
+                              zorder=100)
+
+    def run(self):
         # Parameters
-        T = 40
+        T = 40.0
         dt = 0.01
         time = np.arange(0, T, dt)
-        # n_neighbours_to_stim = 10 # Amount of neighbouring action potentials needed to stimulate a neuron
-        # synaptic_strength = 0.000000275 / n_neighbours_to_stim
-        synaptic_strength = 10
-        # Record for membrane potentials
-        V_record = {node: [] for node in self.combined_network.nodes()}
 
-        # Simulation loop
-        for t in time:
-            # Loop through all neurons in the network
-            for node in self.combined_network.nodes():
-                neuron = self.combined_network.nodes[node]['neuron']
-                I_syn = 0.0
+        I_inp = np.zeros(len(time))
+        I_inp[int(0/dt):int(0.5/dt)] = 15.0
+        I_inp[0] = 0
 
-                # Compute synaptic input from neighbors
-                for neighbor in self.combined_network.neighbors(node):
-                    neighbor_neuron = self.combined_network.nodes[neighbor]['neuron']
-                    tau = 5.0 # Synaptic decay time constant
+        # Post-Synaptic Constants
+        tau = 30
+        weight = 0.1
 
-                    if neighbor_neuron.last_spike_time is not None:
-                        t_fire = neighbor_neuron.last_spike_time
-                        if t >= t_fire:  # Apply synaptic current only after firing
-                            I_syn += synaptic_strength * np.exp(-(t - t_fire) / tau)
+        V_record = {}
+        for nodes in self.update.values():  # Iterate over the lists of nodes in self.update
+            for node in nodes:
+                V_record[node] = []
 
-                # Update neuron with external current + synaptic current
-                neuron.step(dt, I_syn)
-                V_record[node].append(neuron.V)
+        total_endpoints = len(self.update[self.graphs[0]])
+        endpoint_reached = 0
 
-        # Plotting results
-        plt.figure(figsize=(12, 8))
-        for node, voltages in V_record.items():
-            plt.plot(time, voltages, label=f'Neuron {node}')
-        plt.legend()
-        plt.xlabel("Time (ms)")
-        plt.ylabel("Membrane Potential (mV)")
-        plt.title("Neuron Activity in Network")
-        plt.show()
+        for i in range(len(time)):
+            for g in self.graphs[::-1]:
+                nodes = self.update[g]
+                Network = g.nodes()
+                for node in nodes:
+                    I_temp = 0.0
+                    neuron = Network[node]['neuron']
 
-        return V_record, time
+                    if g == self.graphs[-1]:
+                        neuron.step(dt, I_inp[i])
+                        V_record[node].append(neuron.V)
+                    elif g == self.graphs[0]:
+                        for pred in list(g.predecessors(node)):
+                            parent = Network[pred]['neuron']
+                            I_temp += weight * \
+                                np.exp(-(neuron.V - parent.V) / tau)
 
+                        neuron.step(dt, I_temp)
+                        V_record[node].append(neuron.V)
+
+                        # Find peak
+                        if i > 3 and V_record[node][-3] < V_record[node][-2] and V_record[node][-2] > V_record[node][-1]:
+                            if V_record[node][-2] > 20.0:
+                                endpoint_reached += 1
+                    else:
+                        for pred in list(g.predecessors(node)):
+                            parent = Network[pred]['neuron']
+                            I_temp += weight * \
+                                np.exp(-(neuron.V - parent.V) / tau)
+
+                        neuron.step(dt, I_temp)
+                        V_record[node].append(neuron.V)
+
+        self.V_record = V_record
+
+        return endpoint_reached / total_endpoints
+
+
+def generate_erdos_renyi_digraph(n, p, s=''):
+    # Create an empty directed graph
+    G = nx.DiGraph()
+
+    # Add nodes with custom names
+    names = [s + str(i) for i in range(n)]
+    for name in names:
+        G.add_node(name)  # Assuming HodgkinHuxleyNeuron() is defined elsewhere
+
+    # Add edges based on Erdos-Renyi probability
+    for i, u in enumerate(names):
+        for j, v in enumerate(names):
+            if i != j and random.random() < p:
+                G.add_edge(u, v)
+
+    # Remove bidirectional edges
+    for u, v in list(G.edges()):
+        if G.has_edge(v, u):
+            G.remove_edge(v, u)
+
+    # Create neuron objects
+    for node in G.nodes():
+        G.nodes[node]['neuron'] = HodgkinHuxleyNeuron()
+
+    return G
 
 
 if __name__ == '__main__':
     # define graphs
-    n = 50
-    g = nx.erdos_renyi_graph(n, p=0.3)
-    h = nx.erdos_renyi_graph(n, p=0.3)
-    i = nx.erdos_renyi_graph(n, p=0.3)
-
-    # initialise figure and plot
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    network = LayeredNetworkGraph([g, h, i])
-    ax.set_axis_off()
-    # plt.show()
-
-    network.run_hh_network()
-
-
+    n = 10
+    g = generate_erdos_renyi_digraph(n, p=0, s='g')
+    h = generate_erdos_renyi_digraph(n, p=0.5, s='h')
+    i = generate_erdos_renyi_digraph(n, p=0, s='i')
+    prob_inter = 0.2
+    obj = LayeredNetworkGraph(
+        [g, h][::-1], prob_inter, layout=nx.spring_layout, verbose=True)
