@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from layered_network import LayeredNetworkGraph
 import networkx as nx
+from hh_model import HodgkinHuxleyNeuron
 
 import numpy as np
 import scipy.stats as st
@@ -82,6 +83,9 @@ def time_between_spiking(network, start, end):
     """
 
     V_record, time = network.run_hh_network()
+
+    print('Ran network')
+
     fired = True
     time_interval = np.nan
 
@@ -109,113 +113,136 @@ def time_between_spiking(network, start, end):
 
     return time_interval
 
-def plot_spiking_time_within(n, trials, total_replace):
+def calculate_confidence_interval(data, confidence=0.95):
     """
-    This function plots time interval for different connectivities (could be changed to other variable later on)
+    Calculate the confidence interval for a given dataset.
+
+    Parameters:
+        data (list): List of data points.
+        confidence (float): Confidence level (default: 0.95).
+
+    Returns:
+        tuple: Lower and upper bounds of the confidence interval.
     """
-    properties = np.linspace(0.5, 1, 2)
+    if len(data) < 2:
+        raise ValueError("Insufficient data to calculate confidence interval.")
+    mean = np.mean(data)
+    sem = st.sem(data)
+    interval = st.t.interval(confidence, df=len(data) - 1, loc=mean, scale=sem)
+    return interval
 
-    mean_time = []
-    lower_CI_list = []
-    higher_CI_list = []
-    connectivity_list = []
-    for connectivity in properties:
-        data = []
-        for _ in range(trials):
-            g = nx.erdos_renyi_graph(n, p= connectivity)
-            h = nx.erdos_renyi_graph(n, p= connectivity)
-            i = nx.erdos_renyi_graph(n, p= connectivity)
 
-            # Create the layered network
-            network = LayeredNetworkGraph([g, h, i])
+def calculate_spiking_time(network, start, end):
+    """
+    Calculate the time interval for spiking between start and end neurons.
+    """
+    time_interval = time_between_spiking(network, start, end)
+    return time_interval if not np.isnan(time_interval) else None
 
-            start_nodes = [(random.randrange(0, network.activate - 1), 0) for _ in range(total_replace)]
-            end_nodes = [(random.randrange(0, n - 1), network.total_layers - 1) for _ in range(total_replace)]
-            replace_time = []
 
-            for start, end in zip(start_nodes, end_nodes):
-                time_interval = time_between_spiking(network, start, end)
+def process_trials(trials, n, property_value, mode, prob):
+    """
+    Process trials for either 'within-layer' or 'between-layer' mode.
+    
+    Parameters:
+        trials (int): Number of trials to run.
+        n (int): Number of nodes in each layer.
+        property_value (float): Connectivity or probability, depending on the mode.
+        mode (str): Mode of operation ('within' or 'between').
+        prob (float): Probability for LayeredNetworkGraph for 'within' mode.
 
-                if not np.isnan(time_interval):
-                    replace_time.append(time_interval)
+    Returns:
+        list: List of spiking time intervals.
+    """
+    data = []
 
-            if replace_time:    
-                data.append(np.mean(replace_time))
+    for _ in range(trials):
+        print(f'Mode: {mode}, trials: {_}')
+        # Create three layers of Erdős-Rényi graphs
+        g = nx.erdos_renyi_graph(n, p=property_value if mode == 'within' else 0.4)
+        h = nx.erdos_renyi_graph(n, p=property_value if mode == 'within' else 0.4)
+        i = nx.erdos_renyi_graph(n, p=property_value if mode == 'within' else 0.4)
 
-        if data:       
-            # calculate confidence interval
-            confidence_interval = st.t.interval(0.95, df=len(data)-1, loc=np.mean(data), scale=st.sem(data)) 
-            lower_CI, higher_CI = confidence_interval
-            lower_CI_list.append(lower_CI)
-            higher_CI_list.append(higher_CI)
+        print('Generated erdos renyi graphs')
 
-            mean_time.append(np.mean(data))
-            connectivity_list.append(connectivity)
+        # Create the layered network
+        network = LayeredNetworkGraph([g, h, i], prob=prob if mode == 'within' else property_value)
 
-    #plot time per connectivity with confidence interval.
-    plt.plot(connectivity_list, mean_time)
+        print('Generated network')
+
+        # Compute spiking time interval
+        start = (0, 0)
+        end_nodes = [(curr_node,network.total_layers - 1) for curr_node in range(n)]
+        replace_time = []
+
+        for end in end_nodes:
+            time_interval = time_between_spiking(network, start, end)
+
+            print(f'Calculated time interval for endnode: {end}')
+
+            if not np.isnan(time_interval):
+                replace_time.append(time_interval)
+
+        if replace_time:    
+            data.append(np.mean(replace_time))
+
+        print('Calculated data')
+
+    return data
+
+
+def run_combined_spiking_time(n, trials, prob):
+    """
+    Run spiking time analysis for both within-layer and between-layer modes.
+    
+    Parameters:
+        n (int): Number of nodes in each layer.
+        trials (int): Number of trials to run for averaging.
+        prob (float): Probability parameter for within-layer spiking.
+    """
+    within_properties = np.linspace(0.5, 1, 2)  # Connectivity range for 'within'
+    between_properties = np.linspace(0.01, 0.05, 2)  # Probability range for 'between'
+
+    within_mean_time, within_lower_CI_list, within_higher_CI_list = [], [], []
+    between_mean_time, between_lower_CI_list, between_higher_CI_list = [], [], []
+
+    for within_connectivity, between_prob in zip(within_properties, between_properties):
+        # Process 'within-layer' trials
+        within_data = process_trials(trials, n, within_connectivity, mode='within', prob=prob)
+        if within_data:
+            within_mean_time.append(np.mean(within_data))
+            lower_CI, upper_CI = calculate_confidence_interval(within_data)
+            within_lower_CI_list.append(lower_CI)
+            within_higher_CI_list.append(upper_CI)
+
+        # Process 'between-layer' trials
+        between_data = process_trials(trials, n, between_prob, mode='between', prob=prob)
+        if between_data:
+            between_mean_time.append(np.mean(between_data))
+            lower_CI, upper_CI = calculate_confidence_interval(between_data)
+            between_lower_CI_list.append(lower_CI)
+            between_higher_CI_list.append(upper_CI)
+
+    # Plot results for 'within'
+    plt.plot(within_properties, within_mean_time, label='Within-Layer')
+    plt.fill_between(within_properties, within_lower_CI_list, within_higher_CI_list, alpha=0.1)
+
+    # Plot results for 'between'
+    plt.plot(between_properties, between_mean_time, label='Between-Layer')
+    plt.fill_between(between_properties, between_lower_CI_list, between_higher_CI_list, alpha=0.1)
+
     plt.ylim(0, 20)
-    plt.fill_between(connectivity_list, lower_CI_list, higher_CI_list, alpha=0.1)
-    plt.xlabel('connectivity')
-    plt.ylabel('time between first and last neuron')
-    plt.show()
-
-def plot_spiking_time_between(n, trials, total_replace):
-    """
-    This function plots time interval for different connectivities (could be changed to other variable later on)
-    """
-    properties = np.linspace(0.01, 0.05, 2)
-
-    mean_time = []
-    lower_CI_list = []
-    higher_CI_list = []
-    prob_list = []
-    for prob in properties:
-        data = []
-        for _ in range(trials):
-            g = nx.erdos_renyi_graph(n, p= 0.4)
-            h = nx.erdos_renyi_graph(n, p= 0.4)
-            i = nx.erdos_renyi_graph(n, p= 0.4)
-
-            # Create the layered network
-            network = LayeredNetworkGraph([g, h, i], prob)
-
-            start_nodes = [(random.randrange(0, network.activate - 1), 0) for _ in range(total_replace)]
-            end_nodes = [(random.randrange(0, n - 1), network.total_layers - 1) for _ in range(total_replace)]
-            replace_time = []
-
-            for start, end in zip(start_nodes, end_nodes):
-                time_interval = time_between_spiking(network, start, end)
-
-                if not np.isnan(time_interval):
-                    replace_time.append(time_interval)
-
-            if replace_time:  
-                data.append(np.mean(replace_time))
-
-        if data:       
-            # calculate confidence interval
-            confidence_interval = st.t.interval(0.95, df=len(data)-1, loc=np.mean(data), scale=st.sem(data)) 
-            lower_CI, higher_CI = confidence_interval
-            lower_CI_list.append(lower_CI)
-            higher_CI_list.append(higher_CI)
-
-            mean_time.append(np.mean(data))
-            prob_list.append(prob)
-
-    #plot time per connectivity with confidence interval.
-    plt.plot(prob_list, mean_time)
-    plt.ylim(0, 20)
-    plt.fill_between(prob_list, lower_CI_list, higher_CI_list, alpha=0.1)
-    plt.xlabel('connectivity')
-    plt.ylabel('time between first and last neuron')
+    plt.xlabel('Connectivity/Probability')
+    plt.ylabel('Time Between First and Last Neuron')
+    plt.legend()
+    plt.title('Spiking Time: Within vs Between Layers')
     plt.show()
 
 if __name__ == "__main__":
     n = 50
-    g = nx.erdos_renyi_graph(n, p=0.3)
-    h = nx.erdos_renyi_graph(n, p=0.3)
-    i = nx.erdos_renyi_graph(n, p=0.3)
+    g = generate_erdos_renyi_digraph(n, p=0.3)
+    h = generate_erdos_renyi_digraph(n, p=0.3)
+    i = generate_erdos_renyi_digraph(n, p=0.3)
     prob = 0.025
 
     # Create the layered network
@@ -224,5 +251,6 @@ if __name__ == "__main__":
     #visualize_hh_network(network, n)
     #calc_potentials_per_layer(network, n)
     #time_between_spiking(network, (0,0))
-    #plot_spiking_time_within(n, 2, 2)
-    plot_spiking_time_between(n, 2, 2)
+    # plot_spiking_time_within(n, 2, 2, prob)
+    # plot_spiking_time_between(n, 2, 2)
+    run_combined_spiking_time(n, 2, prob)

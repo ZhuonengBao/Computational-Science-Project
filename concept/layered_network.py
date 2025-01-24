@@ -99,6 +99,8 @@ class LayeredNetworkGraph(object):
         # Record for membrane potentials
         V_record = {node: [] for node in self.combined_network.nodes()}
 
+        print('Record for membrame potentials')
+
         # Simulation loop
         for t in time:
             # Loop through all neurons in the network
