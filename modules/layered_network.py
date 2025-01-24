@@ -50,13 +50,9 @@ class LayeredNetworkGraph(object):
         self.get_node_positions()
 
     def generate_erdos_renyi_digraph(self, n, p, s=''):
-        # Create an empty directed graph
         G = nx.DiGraph()
-
-        # Add nodes with custom names
         names = [s + str(i) for i in range(n)]
         for name in names:
-            # Assuming HodgkinHuxleyNeuron() is defined elsewhere
             G.add_node(name)
 
         # Add edges based on Erdos-Renyi probability
@@ -141,28 +137,19 @@ class LayeredNetworkGraph(object):
         self.ax.scatter(x, y, z, *args, **kwargs)
 
     def draw_edges(self, edges, *args, **kwargs):
-        # Hardcoded arrow size
-        arrow_size = 0.1  # Control the size of the arrowhead here
-
-        # Extract color from kwargs if it's passed
-        # Default to 'blue' if not provided
+        arrow_size = 0.1
         color = kwargs.get('color', 'blue')
-
-        # Remove 'color' from kwargs to avoid conflict
         kwargs = {key: value for key, value in kwargs.items() if key !=
                   'color'}
 
         for source, target in edges:
-            # print((source, target))
             start = self.node_positions[source]
             end = self.node_positions[target]
 
-            # Calculate direction vector
             direction = np.array(end) - np.array(start)
             length = np.linalg.norm(direction)
-            direction /= length  # Normalize direction
+            direction /= length
 
-            # Set up the quiver to draw arrows
             self.ax.quiver(start[0], start[1], start[2],
                            direction[0], direction[1], direction[2],
                            length=length, color=color,
@@ -191,7 +178,6 @@ class LayeredNetworkGraph(object):
                 *self.node_positions[(node, z)], node, *args, **kwargs)
 
     def draw(self):
-
         self.draw_edges(self.edges_within_layers,  color='k',
                         alpha=0.3, linestyle='-', zorder=2)
         self.draw_edges(self.edges_between_layers, color='k',
@@ -220,17 +206,10 @@ class LayeredNetworkGraph(object):
         axes[0].set_ylabel("Membrane Potential (mV)")
         axes[0].set_title("Neuron Activity in Network")
 
-        # Plotting the 2D data for each neuron on axes[0]
         time = np.arange(0, self.time, self.step)
         for node, voltages in self.V_record.items():
-            # Ensure time and voltages have the same length
-            min_len = min(len(time), len(voltages))
-            axes[0].plot(time[:min_len], voltages[:min_len],
-                         label=f'Neuron {node}')
+            axes[0].plot(time, voltages, label=f'Neuron {node}')
 
-        # axes[0].legend()
-
-        # Show the plot
         plt.show()
 
     def run(self):
@@ -247,38 +226,40 @@ class LayeredNetworkGraph(object):
         weight = 0.1
 
         peak_times = []
+        first_layer = self.graphs[-1]
+        last_layer = self.graphs[0]
         for i in range(len(time)):
-            for g in self.graphs[::-1]:
-                nodes = self.update[g]
-                Network = g.nodes()
+
+            for layer in self.graphs[::-1]:
+                nodes = self.update[layer]
+                Network = layer.nodes()
+
                 for node in nodes:
                     I_temp = 0.0
                     neuron = Network[node]['neuron']
 
-                    # First Layer
-                    if g == self.graphs[-1]:
+                    if layer == first_layer:
                         neuron.step(self.step, I_inp[i])
-                        self.V_record[node].append(neuron.V)
                     else:
-                        for pred in list(g.predecessors(node)):
+                        for pred in list(layer.predecessors(node)):
                             parent = Network[pred]['neuron']
                             I_temp += weight * \
                                 np.exp(-(neuron.V - parent.V) / tau)
 
                         neuron.step(self.step, I_temp)
-                        self.V_record[node].append(neuron.V)
 
-                        if g == self.graphs[0] and i > 3:
-                            prev_V, current_V, next_V = self.V_record[node][-3:]
-                            if prev_V < current_V and current_V > next_V and current_V > 30.0:
-                                peak_times.append(time[i - 1])
+                    self.V_record[node].append(neuron.V)
+
+                    # Check for action-potential
+                    if layer == last_layer and i > 3:
+                        prev_V, current_V, next_V = self.V_record[node][-3:]
+                        if prev_V < current_V and current_V > next_V and current_V > 30.0:
+                            peak_times.append(time[i - 1])
 
         if self.verbose:
             self.__plot()
 
-        avg = 0
-        if len(peak_times) != 0:
-            avg = sum(peak_times) / len(peak_times)
+        avg = sum(peak_times) / len(peak_times) if peak_times else 0
 
         return avg
 
