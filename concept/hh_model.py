@@ -361,11 +361,19 @@ class HodgkinHuxleyNeuron:
 
     def update_state(self, dt, rk4_steps):
         """
-        Update the state variables V, m, h, n using the RK4 steps.
+        Update the state variables V, m, h, n using the Runge-Kutta 4 (RK4) steps.
 
         Parameters:
         dt (float): Time step.
         rk4_steps (dict): Dictionary of RK4 intermediate steps (k1, k2, k3, k4).
+
+        Examples:
+        >>> neuron = HodgkinHuxleyNeuron()
+        >>> initial_V = neuron.V
+        >>> rk4_steps = neuron.compute_rk4(0.01, 0.0)
+        >>> neuron.update_state(0.01, rk4_steps)
+        >>> neuron.V != initial_V  # Voltage should change after update
+        True
         """
         k1, k2, k3, k4 = rk4_steps["k1"], rk4_steps["k2"], rk4_steps["k3"], rk4_steps["k4"]
 
@@ -374,15 +382,27 @@ class HodgkinHuxleyNeuron:
         self.h += dt * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]) / 6
         self.n += dt * (k1[3] + 2 * k2[3] + 2 * k3[3] + k4[3]) / 6
 
-    def detect_spike(self, threshold=-50):
+    def detect_spike(self, dt, threshold=-50):
         """
         Detect and record spike timing.
 
         Parameters:
-        threshold (float): Voltage threshold for spike detection (default: -50 mV).
+        - dt (float): Time step (milliseconds)
+        - threshold (float): Voltage threshold for spike detection (default: -50 mV).
+
+        Examples:
+        >>> neuron = HodgkinHuxleyNeuron()
+        >>> neuron.V = -40  # Above threshold
+        >>> neuron.detect_spike(0.1)
+        >>> neuron.last_spike_time
+        0.1
+        >>> neuron.V = -60  # Below threshold
+        >>> neuron.detect_spike(0.1)
+        >>> neuron.last_spike_time is None
+        True
         """
         if self.V > threshold and self.last_spike_time is None:
-            self.last_spike_time = 0  # Spike detected
+            self.last_spike_time = dt  # Spike detected
         elif self.V <= threshold:
             self.last_spike_time = None  # Reset spike detection
 
@@ -391,8 +411,17 @@ class HodgkinHuxleyNeuron:
         Perform a single simulation step.
 
         Parameters:
-        dt (float): Time step in milliseconds.
-        I_syn (float): Synaptic current input in µA.
+        - dt (float): Time step (milliseconds)
+        - I_syn (float): Synaptic current input (µA)
+
+        Examples:
+        >>> neuron = HodgkinHuxleyNeuron()
+        >>> initial_V = neuron.V
+        >>> neuron.step(0.01, 0.0)
+        >>> neuron.V != initial_V  # Voltage should update after step
+        True
+        >>> abs(neuron.V) < 1e6  # Voltage should not explode
+        True
         """
         # Compute RK4 intermediate steps
         rk4_steps = self.compute_rk4(dt, I_syn)
@@ -401,7 +430,7 @@ class HodgkinHuxleyNeuron:
         self.update_state(dt, rk4_steps)
 
         # Detect spike events
-        self.detect_spike()
+        self.detect_spike(dt)
 
 
 def main():
