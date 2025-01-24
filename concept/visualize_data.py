@@ -5,7 +5,6 @@ from hh_model import HodgkinHuxleyNeuron
 
 import numpy as np
 import scipy.stats as st
-import random
 
 def generate_erdos_renyi_digraph(n, p):
     G = nx.erdos_renyi_graph(n, p, directed=True)
@@ -86,7 +85,7 @@ def time_between_spiking(network, start, end):
 
     print('Ran network')
 
-    fired = True
+    fired = False
     time_interval = np.nan
 
     # check the time the start neuron gets to an action potential
@@ -101,10 +100,8 @@ def time_between_spiking(network, start, end):
         # an action potential occurs when the threshold is reached
         if V > -50:
             end_time = t
+            fired = True
             break
-
-        # don't count if the neuron did not fire
-        fired = False
 
     # calculate time between start and end neuron firing
     if fired:
@@ -159,14 +156,14 @@ def process_trials(trials, n, property_value, mode, prob):
     for _ in range(trials):
         print(f'Mode: {mode}, trials: {_}')
         # Create three layers of Erdős-Rényi graphs
-        g = nx.erdos_renyi_graph(n, p=property_value if mode == 'within' else 0.4)
-        h = nx.erdos_renyi_graph(n, p=property_value if mode == 'within' else 0.4)
-        i = nx.erdos_renyi_graph(n, p=property_value if mode == 'within' else 0.4)
+        g = generate_erdos_renyi_digraph(n, p=property_value if mode == 'within' else 1)
+        h = generate_erdos_renyi_digraph(n, p=property_value if mode == 'within' else 1)
+        i = nx.erdos_renyi_graph(n, p=property_value if mode == 'within' else 1)
 
         print('Generated erdos renyi graphs')
 
         # Create the layered network
-        network = LayeredNetworkGraph([g, h, i], prob=prob if mode == 'within' else property_value)
+        network = LayeredNetworkGraph([g, h, i], prob=1 if mode == 'within' else property_value)
 
         print('Generated network')
 
@@ -174,7 +171,7 @@ def process_trials(trials, n, property_value, mode, prob):
         start = (0, 0)
         end_nodes = [(curr_node,network.total_layers - 1) for curr_node in range(n)]
         replace_time = []
-
+        not_fired = 0
         for end in end_nodes:
             time_interval = time_between_spiking(network, start, end)
 
@@ -182,13 +179,18 @@ def process_trials(trials, n, property_value, mode, prob):
 
             if not np.isnan(time_interval):
                 replace_time.append(time_interval)
+            else: 
+                not_fired += 1
 
         if replace_time:    
             data.append(np.mean(replace_time))
 
         print('Calculated data')
+    
+    average_not_fired = not_fired / trials
+    
 
-    return data
+    return data, average_not_fired
 
 
 def run_combined_spiking_time(n, trials, prob):
@@ -200,43 +202,65 @@ def run_combined_spiking_time(n, trials, prob):
         trials (int): Number of trials to run for averaging.
         prob (float): Probability parameter for within-layer spiking.
     """
-    within_properties = np.linspace(0.5, 1, 2)  # Connectivity range for 'within'
-    between_properties = np.linspace(0.01, 0.05, 2)  # Probability range for 'between'
+    within_properties = np.linspace(0.5, 1, 3)  # Connectivity range for 'within'
+    between_properties = np.linspace(0.9, 1, 3)  # Probability range for 'between'
 
     within_mean_time, within_lower_CI_list, within_higher_CI_list = [], [], []
     between_mean_time, between_lower_CI_list, between_higher_CI_list = [], [], []
+    within_list = []
+    between_list = []
+    not_fired_within = {}
+    not_fired_between = {}
 
     for within_connectivity, between_prob in zip(within_properties, between_properties):
         # Process 'within-layer' trials
-        within_data = process_trials(trials, n, within_connectivity, mode='within', prob=prob)
+        within_data, average_not_fired = process_trials(trials, n, within_connectivity, mode='within', prob=prob)
+        not_fired_within[within_connectivity] = average_not_fired
+
         if within_data:
             within_mean_time.append(np.mean(within_data))
             lower_CI, upper_CI = calculate_confidence_interval(within_data)
             within_lower_CI_list.append(lower_CI)
             within_higher_CI_list.append(upper_CI)
+            within_list.append(within_connectivity)
 
         # Process 'between-layer' trials
-        between_data = process_trials(trials, n, between_prob, mode='between', prob=prob)
+        between_data, average_not_fired = process_trials(trials, n, between_prob, mode='between', prob=prob)
+        not_fired_between[between_prob] = average_not_fired
+
         if between_data:
             between_mean_time.append(np.mean(between_data))
             lower_CI, upper_CI = calculate_confidence_interval(between_data)
             between_lower_CI_list.append(lower_CI)
             between_higher_CI_list.append(upper_CI)
+            between_list.append(between_prob)
 
     # Plot results for 'within'
-    plt.plot(within_properties, within_mean_time, label='Within-Layer')
-    plt.fill_between(within_properties, within_lower_CI_list, within_higher_CI_list, alpha=0.1)
-
-    # Plot results for 'between'
-    plt.plot(between_properties, between_mean_time, label='Between-Layer')
-    plt.fill_between(between_properties, between_lower_CI_list, between_higher_CI_list, alpha=0.1)
+    plt.plot(within_list, within_mean_time, label='Within-Layer')
+    plt.fill_between(within_list, within_lower_CI_list, within_higher_CI_list, alpha=0.1)
 
     plt.ylim(0, 20)
-    plt.xlabel('Connectivity/Probability')
+    plt.xlabel('Connectivity')
     plt.ylabel('Time Between First and Last Neuron')
     plt.legend()
     plt.title('Spiking Time: Within vs Between Layers')
     plt.show()
+
+    # Plot results for 'between'
+    plt.plot(between_list, between_mean_time, label='Between-Layer')
+    plt.fill_between(between_list, between_lower_CI_list, between_higher_CI_list, alpha=0.1)
+
+    plt.ylim(0, 20)
+    plt.xlabel('Probability')
+    plt.ylabel('Time Between First and Last Neuron')
+    plt.legend()
+    plt.title('Spiking Time: Within vs Between Layers')
+    plt.show()
+
+    print(within_mean_time)
+    print(between_mean_time)
+    print(not_fired_between)
+    print(not_fired_within)
 
 if __name__ == "__main__":
     n = 50
@@ -248,9 +272,9 @@ if __name__ == "__main__":
     # Create the layered network
     network = LayeredNetworkGraph([g, h, i], prob)
     
-    #visualize_hh_network(network, n)
+    visualize_hh_network(network, n)
     #calc_potentials_per_layer(network, n)
     #time_between_spiking(network, (0,0))
     # plot_spiking_time_within(n, 2, 2, prob)
     # plot_spiking_time_between(n, 2, 2)
-    run_combined_spiking_time(n, 2, prob)
+    run_combined_spiking_time(10, 2, 1)
