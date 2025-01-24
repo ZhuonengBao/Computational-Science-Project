@@ -1,5 +1,21 @@
 """
-Plot multi-graphs in 3D.
+ * Multi-Layered Network
+ *
+ * Author's: Zhuoneng Bao, Mink van Maanen, Lynne Vogel and Babet Wijsman
+ * Date: 20 January 2025
+ * Description: This module implements a Multi-Layered Network Graph simulation,
+                where each node represents has Hodgkin-Huxley neuron model. Each
+                layer is a generated Erdős-Rényi directed graph with no
+                bidirectional edges. To find the impact of intra- and
+                inter-connection we measure the average of the time that the
+                impulse is reached at the end. First, all neurons in the
+                first layer are stimulated. The next neuron can only reach its
+                action potential if it receives sufficient stimulus from its
+                parent neurons. To evaluate the impact of intra- and
+                inter-layer connections, the simulation measures the average
+                time taken for the impulse to propagate and reach the
+                last layer. This setup effectively models the dynamic behavior
+                of interconnected neurons across multiple network layers.
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,35 +28,35 @@ from hh_model import HodgkinHuxleyNeuron
 
 
 class LayeredNetworkGraph(object):
-    def __init__(self, layers, time, step, inter_prob=0.0, layout=nx.spring_layout, verbose=False):
-        """Given an ordered list of graphs [g1, g2, ..., gn] that represent
-        different layers in a multi-layer network, plot the network in
-        3D with the different layers separated along the z-axis.
-
-        Within a layer, the corresponding graph defines the connectivity.
-        Between layers, nodes in subsequent layers are connected if
-        they have the same node ID.
-
-        Arguments:
-        ----------
-        graphs : list of networkx.Graph objects
-            List of graphs, one for each layer.
-
-        layout_func : function handle (default networkx.spring_layout)
-            Function used to compute the layout.
-
-        ax : mpl_toolkits.mplot3d.Axes3d instance or None (default None)
-            The axis to plot to. If None is given, a new figure and a new axis are created.
-
+    def __init__(self, layers, time, step, inter_prob=0.0, verbose=False):
         """
-        # book-keeping
+        Generates a multi-layer network based on the Erdos-Renyi model for each
+        layer and optionally plots the network in a 3D figure. In the
+        3D visualization, different layers are separated along the z-axis.
+
+        Description:
+        - Intra-layer Connectivity: Within each layer, the connectivity between nodes
+        is defined by the Erdos-Renyi graph specified in the `layers` parameter.
+        - Inter-layer Connectivity: Nodes in consecutive layers are connected if they
+        share the same node ID, forming vertical connections between layers.
+
+        Parameters:
+        - layers (list of tuples):
+            A list of triples (n, p, s), where:
+            - n (int): Number of nodes in the layer.
+            - p (float): Probability of an edge existing between any pair of nodes.
+            - s (float): Scaling factor for the node positions in the layer.
+        - time (float): The duration of the simulation.
+        - step (float): The time step used to approximate the Hodgkin-Huxley model.
+        - verbose (bool): If True, the function plots the network in a 3D figure.
+        """
         self.layers = layers
         self.total_layers = len(layers)
         self.time = time
         self.step = step
         self.verbose = verbose
         self.inter_prob = inter_prob
-        self.layout = layout
+        self.layout = nx.spring_layout
 
         # create internal representation of nodes and edges
         self.get_graphs()
@@ -50,13 +66,25 @@ class LayeredNetworkGraph(object):
         self.get_node_positions()
 
     def generate_erdos_renyi_digraph(self, n, p, s=''):
-        # Create an empty directed graph
-        G = nx.DiGraph()
+        """
+        Generates a directed Erdos-Renyi graph with no bidirectional edges.
 
-        # Add nodes with custom names
+        Parameters:
+        - n (int): Number of nodes.
+        - p (float): The probability of creating a directed edge between two nodes.
+        - s (str): A prefix for naming the nodes (optional).
+
+        Returns:
+        - G (object): A Networkx directed graph object.
+
+        Examples:
+        >>> Network = LayeredNetworkGraph([(5, 0, '')], 10, 1, inter_prob=0.0)
+        >>> len(Network.nodes)
+        5
+        """
+        G = nx.DiGraph()
         names = [s + str(i) for i in range(n)]
         for name in names:
-            # Assuming HodgkinHuxleyNeuron() is defined elsewhere
             G.add_node(name)
 
         # Add edges based on Erdos-Renyi probability
@@ -65,11 +93,6 @@ class LayeredNetworkGraph(object):
                 if i != j and random.random() < p:
                     G.add_edge(u, v)
 
-        # Remove bidirectional edges
-        for u, v in list(G.edges()):
-            if G.has_edge(v, u):
-                G.remove_edge(v, u)
-
         # Create neuron objects
         for node in G.nodes():
             G.nodes[node]['neuron'] = HodgkinHuxleyNeuron()
@@ -77,14 +100,28 @@ class LayeredNetworkGraph(object):
         return G
 
     def get_graphs(self):
-        """Creates the network for each layer."""
+        """
+        Creates an Erdos-Renyi network for each layer.
+
+        Examples:
+        >>> Network = LayeredNetworkGraph([(10, 0.3, 's'), (10, 0.3, 't')], 10, 1, inter_prob=0.0)
+        >>> len(Network.graphs) # Test for number of nodes
+        2
+        """
         self.graphs = []
 
         for n, p, s in self.layers[::-1]:
             self.graphs.append(self.generate_erdos_renyi_digraph(n, p, s))
 
     def get_nodes(self):
-        """Construct an internal representation of nodes with the format (node ID, layer)."""
+        """
+        Construct an internal representation of nodes with the format (node ID, layer).
+
+        Examples:
+        >>> Network = LayeredNetworkGraph([(10, 0.3, '')], 10, 1, inter_prob=0.0)
+        >>> ('3', 0) in Network.nodes
+        True
+        """
         self.nodes = []
 
         for z, g in enumerate(self.graphs):
@@ -100,14 +137,28 @@ class LayeredNetworkGraph(object):
                 self.V_record[node] = []
 
     def get_edges_within_layers(self):
-        """Remap edges in the individual layers to the internal representations of the node IDs."""
+        """
+        Remap edges in the individual layers to the internal representations of the node IDs.
+
+        Examples:
+        >>> Network = LayeredNetworkGraph([(10, 1.0, '')], 10, 1, inter_prob=0.0)
+        >>> (('0', 0), ('1', 0)) in Network.edges_within_layers
+        True
+        """
         self.edges_within_layers = []
         for z, g in enumerate(self.graphs):
             self.edges_within_layers.extend(
                 [((source, z), (target, z)) for source, target in g.edges()])
 
     def get_edges_between_layers(self):
-        """Forms connections between nodes from different layers, thus connecting the layers"""
+        """
+        Forms connections between nodes from different layers, thus connecting the layers
+
+        Examples:
+        >>> Network = LayeredNetworkGraph([(5, 0, 's'), (5, 0, 't')], 10, 1, inter_prob=1.0)
+        >>> (('s0', 1), ('t0', 0)) in Network.edges_between_layers
+        True
+        """
         self.edges_between_layers = []
         for z1, h in enumerate(self.graphs[:-1]):
             z2 = z1 + 1
@@ -125,6 +176,17 @@ class LayeredNetworkGraph(object):
                             ((node1, z2), (node2, z1)))
 
     def get_node_positions(self, *args, **kwargs):
+        """
+        Generate and store 3D positions for nodes in a sequence of graphs.
+
+        Parameters:
+        - *args: Matplotlib layout additional arugments.
+        - **kwargs: Matplotlib layout additional keyword arugments.
+
+        >>> Network = LayeredNetworkGraph([(5, 0.3, 's')], 10, 1, inter_prob=0.5)
+        >>> np.all([i in list(Network.node_positions.keys()) for i in Network.nodes])
+        True
+        """
         composition = self.graphs[0]
         for h in self.graphs[1:]:
             composition = nx.compose(composition, h)
@@ -137,38 +199,32 @@ class LayeredNetworkGraph(object):
                 {(node, z): (*pos[node], z) for node in g.nodes()})
 
     def draw_nodes(self, nodes, *args, **kwargs):
+        """Draws the nodes in the 3D plane"""
         x, y, z = zip(*[self.node_positions[node] for node in nodes])
         self.ax.scatter(x, y, z, *args, **kwargs)
 
     def draw_edges(self, edges, *args, **kwargs):
-        # Hardcoded arrow size
-        arrow_size = 0.1  # Control the size of the arrowhead here
-
-        # Extract color from kwargs if it's passed
-        # Default to 'blue' if not provided
+        """Draws the edges in the 3D plane"""
+        arrow_size = 0.1
         color = kwargs.get('color', 'blue')
-
-        # Remove 'color' from kwargs to avoid conflict
         kwargs = {key: value for key, value in kwargs.items() if key !=
                   'color'}
 
         for source, target in edges:
-            # print((source, target))
             start = self.node_positions[source]
             end = self.node_positions[target]
 
-            # Calculate direction vector
             direction = np.array(end) - np.array(start)
             length = np.linalg.norm(direction)
-            direction /= length  # Normalize direction
+            direction /= length
 
-            # Set up the quiver to draw arrows
             self.ax.quiver(start[0], start[1], start[2],
                            direction[0], direction[1], direction[2],
                            length=length, color=color,
                            arrow_length_ratio=arrow_size, *args, **kwargs)
 
     def get_extent(self, pad=0.1):
+        """Helper function used to extend the array node_positions."""
         xyz = np.array(list(self.node_positions.values()))
         xmin, ymin, _ = np.min(xyz, axis=0)
         xmax, ymax, _ = np.max(xyz, axis=0)
@@ -178,6 +234,7 @@ class LayeredNetworkGraph(object):
             (ymin - pad * dy, ymax + pad * dy)
 
     def draw_plane(self, z, *args, **kwargs):
+        """Draws the plane in the 3D figure"""
         (xmin, xmax), (ymin, ymax) = self.get_extent(pad=0.1)
         u = np.linspace(xmin, xmax, 10)
         v = np.linspace(ymin, ymax, 10)
@@ -186,13 +243,14 @@ class LayeredNetworkGraph(object):
         self.ax.plot_surface(U, V, W, *args, **kwargs)
 
     def draw_node_labels(self, *args, **kwargs):
+        """Draws the node labels in the 3D figure"""
         for node, z in self.nodes:
             self.ax.text(
                 *self.node_positions[(node, z)], node, *args, **kwargs)
 
     def draw(self):
-
-        self.draw_edges(self.edges_within_layers,  color='k',
+        """Draws the 3D plot"""
+        self.draw_edges(self.edges_within_layers, color='k',
                         alpha=0.3, linestyle='-', zorder=2)
         self.draw_edges(self.edges_between_layers, color='k',
                         alpha=0.3, linestyle='--', zorder=2)
@@ -207,6 +265,10 @@ class LayeredNetworkGraph(object):
                               zorder=100)
 
     def __plot(self):
+        """
+        Generates a 2D plot showing neuron voltages over time and a 3D
+        visualization of the network structure.
+        """
         fig, axes = plt.subplots(1, 2, figsize=(20, 6))
 
         # Plot the 3D graph
@@ -220,26 +282,42 @@ class LayeredNetworkGraph(object):
         axes[0].set_ylabel("Membrane Potential (mV)")
         axes[0].set_title("Neuron Activity in Network")
 
-        # Plotting the 2D data for each neuron on axes[0]
         time = np.arange(0, self.time, self.step)
         for node, voltages in self.V_record.items():
-            # Ensure time and voltages have the same length
-            min_len = min(len(time), len(voltages))
-            axes[0].plot(time[:min_len], voltages[:min_len],
-                         label=f'Neuron {node}')
+            axes[0].plot(time, voltages, label=f'Neuron {node}')
 
-        # axes[0].legend()
-
-        # Show the plot
         plt.show()
 
     def run(self):
-        # Parameters
+        """
+        Simulates the activity of the neural network over a specified time period.
+
+        Attributes:
+        - self.time (float): Total simulation time in milliseconds.
+        - self.step (float): Time step for simulation in milliseconds.
+        - self.graphs (list): A sequence of graphs representing the layers of
+          the network (from input to output).
+        - self.update (dict): A mapping of layers to nodes to be updated.
+        - self.verbose (bool): If True, plots the results of the simulation.
+
+        Returns:
+        - avg (float): The average time (in milliseconds) of action potential
+                       peaks in the last layer. Returns 0 if no peaks
+                       are detected.
+
+        Examples:
+        >>> Network = LayeredNetworkGraph([(5, 1.0, 'g'), (5, 1.0, 'h')], 15, 0.01, inter_prob=1.0)
+        >>> time = Network.run()
+        >>> 3.5 < time
+        True
+        >>> time < 3.7
+        True
+        """
         time = np.arange(0, self.time, self.step)
 
         # Stimulse of 15nA/cm^2 for 1.0 ms
         I_inp = np.zeros(len(time))
-        I_inp[0:int(1/self.step)] = 15.0
+        I_inp[0:int(1 / self.step)] = 15.0
         I_inp[0] = 0
 
         # Post-Synaptic Constants
@@ -247,51 +325,53 @@ class LayeredNetworkGraph(object):
         weight = 0.1
 
         peak_times = []
+        first_layer = self.graphs[-1]
+        last_layer = self.graphs[0]
         for i in range(len(time)):
-            for g in self.graphs[::-1]:
-                nodes = self.update[g]
-                Network = g.nodes()
+
+            for layer in self.graphs[::-1]:
+                nodes = self.update[layer]
+                Network = layer.nodes()
+
                 for node in nodes:
                     I_temp = 0.0
                     neuron = Network[node]['neuron']
 
-                    # First Layer
-                    if g == self.graphs[-1]:
+                    if layer == first_layer:
                         neuron.step(self.step, I_inp[i])
-                        self.V_record[node].append(neuron.V)
                     else:
-                        for pred in list(g.predecessors(node)):
+                        for pred in list(layer.predecessors(node)):
                             parent = Network[pred]['neuron']
                             I_temp += weight * \
                                 np.exp(-(neuron.V - parent.V) / tau)
 
                         neuron.step(self.step, I_temp)
-                        self.V_record[node].append(neuron.V)
 
-                        if g == self.graphs[0] and i > 3:
-                            prev_V, current_V, next_V = self.V_record[node][-3:]
-                            if prev_V < current_V and current_V > next_V and current_V > 30.0:
-                                peak_times.append(time[i - 1])
+                    self.V_record[node].append(neuron.V)
+
+                    # Check for action-potential
+                    if layer == last_layer and i > 3:
+                        prev_V, current_V, next_V = self.V_record[node][-3:]
+                        if prev_V < current_V and current_V > next_V and current_V > 30.0:
+                            peak_times.append(time[i - 1])
 
         if self.verbose:
             self.__plot()
 
-        avg = 0
-        if len(peak_times) != 0:
-            avg = sum(peak_times) / len(peak_times)
+        avg = sum(peak_times) / len(peak_times) if peak_times else 0
 
         return avg
 
 
 if __name__ == '__main__':
     # define graphs
-    n = 10
-    p = 0.5
-    prob_inter = 0.2
+    n = 5
+    p = 0.2
+    prob_inter = 0.5
 
     T = 25
     dt = 0.01
     obj = LayeredNetworkGraph(
-        [(n, 0, 'g')], T, dt, inter_prob=prob_inter, verbose=True)
+        [(n, 0, 'g'), (n, p, 'h')], T, dt, inter_prob=prob_inter, verbose=True)
     a = obj.run()
     print(a)

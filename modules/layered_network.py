@@ -366,8 +366,8 @@ class LayeredNetworkGraph(object):
 if __name__ == '__main__':
     # define graphs
     n = 5
-    p = 1.0
-    prob_inter = 1.0
+    p = 0.2
+    prob_inter = 0.5
 
     T = 25
     dt = 0.01
