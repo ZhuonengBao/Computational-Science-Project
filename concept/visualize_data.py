@@ -1,10 +1,24 @@
 import matplotlib.pyplot as plt
-from hh_model import HodgkinHuxleyNeuron
 from layered_network import LayeredNetworkGraph
 import networkx as nx
+
 import numpy as np
 import scipy.stats as st
 import random
+
+def generate_erdos_renyi_digraph(n, p):
+    G = nx.erdos_renyi_graph(n, p, directed=True)
+
+    # Remove bidirected edges
+    for u, v in list(G.edges()):
+        if G.has_edge(v, u):
+            G.remove_edge(v, u)
+
+    # Create neuron objects
+    for node in G.nodes():
+        G.nodes[node]['neuron'] = HodgkinHuxleyNeuron()
+
+    return G
 
 def visualize_hh_network(network, n):
     """
@@ -47,7 +61,7 @@ def calc_potentials_per_layer(network, n):
             if node not in V_record:
                 print(f"Warning: No data recorded for node {node}")
             for t, V in zip(time, V_record[node]):
-                if V > -54.387:
+                if V > -50:
                     neurons_reached += 1
                     timing.append(t)
                     print(f"Node {node} spiked at time {t} with potential {V}")
@@ -67,14 +81,6 @@ def time_between_spiking(network, start, end):
     This function calculated the time difference in spiking of a start and end neuron
     """
 
-    #combined_network = network.combined_network
-    #distances = nx.shortest_path_length(combined_network, source=start)
-
-    # Find the node with the maximum distance
-    # end, max_distance = max(distances.items(), key=lambda x: x[1])
-    # print(max_distance, end)
-
-    # record voltages with network
     V_record, time = network.run_hh_network()
     fired = True
     time_interval = np.nan
@@ -82,14 +88,14 @@ def time_between_spiking(network, start, end):
     # check the time the start neuron gets to an action potential
     for t, V in zip(time, V_record[start]):
         # an action potential occurs when the threshold is reached
-        if V > -54.387:
+        if V > -50:
             start_time = t
             break
 
     # check the time an action potential occurs in the end neuron
     for t, V in zip(time, V_record[end]):
         # an action potential occurs when the threshold is reached
-        if V > -54.387:
+        if V > -50:
             end_time = t
             break
 
@@ -205,12 +211,11 @@ def plot_spiking_time_between(n, trials, total_replace):
     plt.ylabel('time between first and last neuron')
     plt.show()
 
-
 if __name__ == "__main__":
     n = 50
-    g = nx.erdos_renyi_graph(n, p=0.4)
-    h = nx.erdos_renyi_graph(n, p=0.4)
-    i = nx.erdos_renyi_graph(n, p=0.4)
+    g = nx.erdos_renyi_graph(n, p=0.3)
+    h = nx.erdos_renyi_graph(n, p=0.3)
+    i = nx.erdos_renyi_graph(n, p=0.3)
     prob = 0.025
 
     # Create the layered network
