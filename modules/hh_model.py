@@ -34,6 +34,84 @@ spec = [
 
 @jitclass(spec)
 class HodgkinHuxleyNeuron:
+    """
+    >>> neuron = HodgkinHuxleyNeuron(0.01)
+
+    # Sodium (Na) Test
+    >>> round(neuron.I_Na(-65, 0.05, 0.6), 5)  # Test for resting potential
+    -1.035
+    >>> round(neuron.I_Na(-50, 0.1, 0.8), 5)  # Test for depolarized potential
+    -9.6
+    >>> round(neuron.I_Na(50, 1.0, 1.0), 5)  # Test for maximum activation and depolarization
+    0.0
+
+    # Potassium (K) Test
+    >>> round(neuron.I_K(-65, 0.32), 5)  # Test for resting potential
+    4.52985
+    >>> round(neuron.I_K(-50, 0.6), 5)  # Test for depolarized potential
+    125.9712
+    >>> round(neuron.I_K(-77, 0.5), 5)  # Test when V equals E_K (no current expected)
+    0.0
+
+    # Leakage Test
+    >>> round(neuron.I_L(-65), 5)  # Test for resting potential
+    -3.1839
+    >>> round(neuron.I_L(-70), 5)  # Test for hyperpolarized potential
+    -4.6839
+    >>> round(neuron.I_L(-54.387), 5)  # Test when V equals E_L (no current expected)
+    0.0
+
+
+    # Variable Dynamics Test
+    >>> round(neuron.alpha_m(-65), 5)  # Test for resting potential
+    0.22356
+    >>> round(neuron.alpha_m(-50), 5)  # Test for depolarized potential
+    0.58198
+    >>> round(neuron.beta_m(-65), 5)  # Test for resting potential
+    4.0
+    >>> round(neuron.beta_m(-40), 5)  # Test for depolarized potential
+    0.99741
+    >>> round(neuron.alpha_h(-65), 5)  # Test for resting potential
+    0.07
+    >>> round(neuron.alpha_h(-50), 5)  # Test for depolarized potential
+    0.03307
+    >>> round(neuron.beta_h(-65), 5)  # Test for resting potential
+    0.04743
+    >>> round(neuron.beta_h(-40), 5)  # Test for depolarized potential
+    0.37754
+    >>> round(neuron.alpha_n(-65), 5)  # Test for resting potential
+    0.0582
+    >>> round(neuron.alpha_n(-50), 5)  # Test for depolarized potential
+    0.12707
+    >>> round(neuron.beta_n(-65), 5)  # Test for resting potential
+    0.125
+    >>> round(neuron.beta_n(-50), 5)  # Test for depolarized potential
+    0.10363
+    >>> round(neuron.dm_dt(-65, 0.1), 5) # Test for resting potential
+    -0.19879
+    >>> round(neuron.dm_dt(-50, 0.05), 5) # Test for depolarized potential
+    0.46596
+    >>> round(neuron.dh_dt(-65, 0.5), 5) # Test for resting potential
+    0.01129
+    >>> round(neuron.dh_dt(-50, 0.6), 5) # Test for depolarized potential
+    -0.09623
+    >>> round(neuron.dn_dt(-65, 0.3), 5) # Test for resting potential
+    0.00324
+    >>> round(neuron.dn_dt(-50, 0.32), 5) # Test for depolarized potential
+    0.05325
+
+    # Voltage Test
+    >>> round(neuron.dV_dt(0.0, -65, 0.05, 0.6, 0.32), 5) # Test for resting potential
+    -0.31095
+    >>> round(neuron.dV_dt(5.0, -50, 0.1, 0.3, 0.5), 5) # Test for depolarized potential
+    -53.4661
+
+    # Runge-Kutta Numerical Test
+    >>> neuron.step(0.0)
+    >>> round(neuron.V)
+    -65
+    """
+
     def __init__(self, step: float):
         # Timestep
         self.dt = step
@@ -68,15 +146,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Sodium ionic current (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.I_Na(-65, 0.05, 0.6), 5)  # Test for resting potential
-        -1.035
-        >>> round(neuron.I_Na(-50, 0.1, 0.8), 5)  # Test for depolarized potential
-        -9.6
-        >>> round(neuron.I_Na(50, 1.0, 1.0), 5)  # Test for maximum activation and depolarization
-        0.0
         """
         return self.g_Na * (m**3) * h * (V - self.E_Na)
 
@@ -89,15 +158,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Potassium ionic current (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.I_K(-65, 0.32), 5)  # Test for resting potential
-        4.52985
-        >>> round(neuron.I_K(-50, 0.6), 5)  # Test for depolarized potential
-        125.9712
-        >>> round(neuron.I_K(-77, 0.5), 5)  # Test when V equals E_K (no current expected)
-        0.0
         """
         return self.g_K * (n**4) * (V - self.E_K)
 
@@ -109,15 +169,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Leak current (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.I_L(-65), 5)  # Test for resting potential
-        -3.1839
-        >>> round(neuron.I_L(-70), 5)  # Test for hyperpolarized potential
-        -4.6839
-        >>> round(neuron.I_L(-54.387), 5)  # Test when V equals E_L (no current expected)
-        0.0
         """
         return self.g_L * (V - self.E_L)
 
@@ -130,13 +181,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         float: Alpha_m rate constant
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.alpha_m(-65), 5)  # Test for resting potential
-        0.22356
-        >>> round(neuron.alpha_m(-50), 5)  # Test for depolarized potential
-        0.58198
         """
         return 0.1 * (V + 40) / (1 - np.exp(-(V + 40) / 10))
 
@@ -148,13 +192,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Beta_m rate constant (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.beta_m(-65), 5)  # Test for resting potential
-        4.0
-        >>> round(neuron.beta_m(-40), 5)  # Test for depolarized potential
-        0.99741
         """
         return 4.0 * np.exp(-(V + 65) / 18)
 
@@ -166,13 +203,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Alpha_h rate constant (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.alpha_h(-65), 5)  # Test for resting potential
-        0.07
-        >>> round(neuron.alpha_h(-50), 5)  # Test for depolarized potential
-        0.03307
         """
         return 0.07 * np.exp(-(V + 65) / 20)
 
@@ -184,13 +214,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Beta_h rate constant (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.beta_h(-65), 5)  # Test for resting potential
-        0.04743
-        >>> round(neuron.beta_h(-40), 5)  # Test for depolarized potential
-        0.37754
         """
         return 1 / (1 + np.exp(-(V + 35) / 10))
 
@@ -202,13 +225,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Alpha_n rate constant (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.alpha_n(-65), 5)  # Test for resting potential
-        0.0582
-        >>> round(neuron.alpha_n(-50), 5)  # Test for depolarized potential
-        0.12707
         """
         return 0.01 * (V + 55) / (1 - np.exp(-(V + 55) / 10))
 
@@ -220,13 +236,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Beta_n rate constant (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.beta_n(-65), 5)  # Test for resting potential
-        0.125
-        >>> round(neuron.beta_n(-50), 5)  # Test for depolarized potential
-        0.10363
         """
         return 0.125 * np.exp(-(V + 65) / 80)
 
@@ -240,13 +249,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Rate of change of m (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.dm_dt(-65, 0.1), 5) # Test for resting potential
-        -0.19879
-        >>> round(neuron.dm_dt(-50, 0.05), 5) # Test for depolarized potential
-        0.46596
         """
         return self.alpha_m(V) * (1 - m) - self.beta_m(V) * m
 
@@ -259,13 +261,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Rate of change of h (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.dh_dt(-65, 0.5), 5) # Test for resting potential
-        0.01129
-        >>> round(neuron.dh_dt(-50, 0.6), 5) # Test for depolarized potential
-        -0.09623
         """
         return self.alpha_h(V) * (1 - h) - self.beta_h(V) * h
 
@@ -278,13 +273,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Rate of change of n (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.dn_dt(-65, 0.3), 5) # Test for resting potential
-        0.00324
-        >>> round(neuron.dn_dt(-50, 0.32), 5) # Test for depolarized potential
-        0.05325
         """
         return self.alpha_n(V) * (1 - n) - self.beta_n(V) * n
 
@@ -301,13 +289,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         float: Rate of change of membrane potential (dV/dt).
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.dV_dt(-65, 0.05, 0.6, 0.32, 0.0), 5) # Test for resting potential
-        -0.31095
-        >>> round(neuron.dV_dt(-50, 0.1, 0.3, 0.5, 5.0), 5) # Test for depolarized potential
-        -53.4661
         """
         I_Na = self.I_Na(V, m, h)
         I_K = self.I_K(V, n)
@@ -320,19 +301,12 @@ class HodgkinHuxleyNeuron:
         """
         Compute the RK4 intermediate steps for V, m, h, n.
 
-        Returns:
-        dict: A dictionary with keys 'k1', 'k2', 'k3', 'k4', each containing
-            a tuple of (k_V, k_m, k_h, k_n).
+        Parameters:
+        - I (float): Synaptic current in µA/cm^2.
 
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> rk4_steps = neuron.compute_rk4(0.01, 0.0)
-        >>> isinstance(rk4_steps, dict)
-        True
-        >>> len(rk4_steps)
-        4
-        >>> all(len(step) == 4 for step in rk4_steps.values())
-        True
+        Side-effect:
+            Numerically computes the voltage for the next time step and
+            updates the self.V attribute.
         """
         V = self.V
         m, h, n = self.m, self.h, self.n
