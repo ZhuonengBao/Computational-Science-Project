@@ -70,5 +70,8 @@ pip install numpy matplotlib networkx scipy
 - `plot time between spiking for different connectivities within layers`: call spiking_time_within(n, trials, total_replace) in main of visualize_data.py.
 - `plot time between spiking for different connectivities bewteen layers`: call spiking_time_between(n, trials, total_replace) in main of visualize_data.py.
 
-
-
+  ## Key parameters
+  - `n`: number of neurons per network
+  - `start and end`: Neurons to measure time difference between spiking. These are structured like (node, layer)
+  - `trials`: The number of networks generated to run the simulations.
+  - `total replace`: This determines the ammount of times the start and end neuron get replaced.
