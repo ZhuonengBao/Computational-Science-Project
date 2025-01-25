@@ -269,7 +269,7 @@ class LayeredNetworkGraph(object):
         Generates a 2D plot showing neuron voltages over time and a 3D
         visualization of the network structure.
         """
-        fig, axes = plt.subplots(1, 2, figsize=(20, 6))
+        fig, axes = plt.subplots(1, 2, figsize=(10, 6))
 
         # Plot the 3D graph
         axes[1].set_axis_off()
@@ -342,8 +342,10 @@ class LayeredNetworkGraph(object):
                     else:
                         for pred in list(layer.predecessors(node)):
                             parent = Network[pred]['neuron']
-                            I_temp += weight * \
-                                np.exp(-(neuron.V - parent.V) / tau)
+
+                            diff = np.clip(neuron.V - parent.V, -50, 50)
+                            result = np.exp(-diff / tau)
+                            I_temp += weight * result
 
                         neuron.step(self.step, I_temp)
 
