@@ -9,14 +9,129 @@
  *              Rinzel, J. and Ermentrout, G.B. (1998),
  *              "Analysis of Neural Excitability and Oscillations."
 """
+from numba.experimental import jitclass
+from numba import float64
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')
 
+spec = [
+    ('dt', float64),
+    ('C_m', float64),
+    ('V', float64),
+    ('g_Na', float64),
+    ('E_Na', float64),
+    ('m', float64),
+    ('h', float64),
+    ('g_K', float64),
+    ('E_K', float64),
+    ('n', float64),
+    ('g_L', float64),
+    ('E_L', float64),
+]
 
+
+@jitclass(spec)
 class HodgkinHuxleyNeuron:
-    def __init__(self):
+    """
+    Creates a neuron object based on the Hodgkin-Huxley model.
+
+    The constants used are derived from the work of Rinzel, J. and
+    Ermentrout, G.B. (1998),
+    "Analysis of Neural Excitability and Oscillations."
+
+    Parameters:
+    - step (float): The time step used to approximate the ordinary
+      differential equations (ODEs) of the Hodgkin-Huxley model using the
+      Runge-Kutta numerical method.
+
+    Returns:
+    - (object): An instance representing a neuron modeled using
+                the Hodgkin-Huxley model.
+
+    Doctest:
+    >>> neuron = HodgkinHuxleyNeuron(0.01)
+
+    # Sodium (Na) Test
+    >>> round(neuron.I_Na(-65, 0.05, 0.6), 5)  # Test for resting potential
+    -1.035
+    >>> round(neuron.I_Na(-50, 0.1, 0.8), 5)  # Test for depolarized potential
+    -9.6
+    >>> round(neuron.I_Na(50, 1.0, 1.0), 5)  # Test for maximum activation and depolarization
+    0.0
+
+    # Potassium (K) Test
+    >>> round(neuron.I_K(-65, 0.32), 5)  # Test for resting potential
+    4.52985
+    >>> round(neuron.I_K(-50, 0.6), 5)  # Test for depolarized potential
+    125.9712
+    >>> round(neuron.I_K(-77, 0.5), 5)  # Test when V equals E_K (no current expected)
+    0.0
+
+    # Leakage Test
+    >>> round(neuron.I_L(-65), 5)  # Test for resting potential
+    -3.1839
+    >>> round(neuron.I_L(-70), 5)  # Test for hyperpolarized potential
+    -4.6839
+    >>> round(neuron.I_L(-54.387), 5)  # Test when V equals E_L (no current expected)
+    0.0
+
+
+    # Variable Dynamics Test
+    >>> round(neuron.alpha_m(-65), 5)  # Test for resting potential
+    0.22356
+    >>> round(neuron.alpha_m(-50), 5)  # Test for depolarized potential
+    0.58198
+    >>> round(neuron.beta_m(-65), 5)  # Test for resting potential
+    4.0
+    >>> round(neuron.beta_m(-40), 5)  # Test for depolarized potential
+    0.99741
+    >>> round(neuron.alpha_h(-65), 5)  # Test for resting potential
+    0.07
+    >>> round(neuron.alpha_h(-50), 5)  # Test for depolarized potential
+    0.03307
+    >>> round(neuron.beta_h(-65), 5)  # Test for resting potential
+    0.04743
+    >>> round(neuron.beta_h(-40), 5)  # Test for depolarized potential
+    0.37754
+    >>> round(neuron.alpha_n(-65), 5)  # Test for resting potential
+    0.0582
+    >>> round(neuron.alpha_n(-50), 5)  # Test for depolarized potential
+    0.12707
+    >>> round(neuron.beta_n(-65), 5)  # Test for resting potential
+    0.125
+    >>> round(neuron.beta_n(-50), 5)  # Test for depolarized potential
+    0.10363
+    >>> round(neuron.dm_dt(-65, 0.1), 5) # Test for resting potential
+    -0.19879
+    >>> round(neuron.dm_dt(-50, 0.05), 5) # Test for depolarized potential
+    0.46596
+    >>> round(neuron.dh_dt(-65, 0.5), 5) # Test for resting potential
+    0.01129
+    >>> round(neuron.dh_dt(-50, 0.6), 5) # Test for depolarized potential
+    -0.09623
+    >>> round(neuron.dn_dt(-65, 0.3), 5) # Test for resting potential
+    0.00324
+    >>> round(neuron.dn_dt(-50, 0.32), 5) # Test for depolarized potential
+    0.05325
+
+    # Voltage Test
+    >>> round(neuron.dV_dt(0.0, -65, 0.05, 0.6, 0.32), 5) # Test for resting potential
+    -0.31095
+    >>> round(neuron.dV_dt(5.0, -50, 0.1, 0.3, 0.5), 5) # Test for depolarized potential
+    -53.4661
+
+    # Runge-Kutta Numerical Test
+    >>> neuron.step(0.0)
+    >>> round(neuron.V)
+    -65
+    """
+
+    def __init__(self, step: float):
+        # Timestep
+        self.dt = step
+
         # Membrane properties
         self.C_m = 1.0  # Membrane capacitance
         self.V = -65.0  # Initial membrane potential
@@ -36,12 +151,6 @@ class HodgkinHuxleyNeuron:
         self.g_L = 0.3      # Maximum conductance
         self.E_L = -54.387  # Reversal potential
 
-        # External current
-        self.I_ext = 0.0
-
-        # Last time neuron fired
-        self.last_spike_time = None
-
     # Ionic currents
     def I_Na(self, V, m, h):
         """Calculate the sodium ionic current.
@@ -53,15 +162,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Sodium ionic current (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.I_Na(-65, 0.05, 0.6), 5)  # Test for resting potential
-        -1.035
-        >>> round(neuron.I_Na(-50, 0.1, 0.8), 5)  # Test for depolarized potential
-        -9.6
-        >>> round(neuron.I_Na(50, 1.0, 1.0), 5)  # Test for maximum activation and depolarization
-        0.0
         """
         return self.g_Na * (m**3) * h * (V - self.E_Na)
 
@@ -74,15 +174,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Potassium ionic current (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.I_K(-65, 0.32), 5)  # Test for resting potential
-        4.52985
-        >>> round(neuron.I_K(-50, 0.6), 5)  # Test for depolarized potential
-        125.9712
-        >>> round(neuron.I_K(-77, 0.5), 5)  # Test when V equals E_K (no current expected)
-        0.0
         """
         return self.g_K * (n**4) * (V - self.E_K)
 
@@ -94,15 +185,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Leak current (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.I_L(-65), 5)  # Test for resting potential
-        -3.1839
-        >>> round(neuron.I_L(-70), 5)  # Test for hyperpolarized potential
-        -4.6839
-        >>> round(neuron.I_L(-54.387), 5)  # Test when V equals E_L (no current expected)
-        0.0
         """
         return self.g_L * (V - self.E_L)
 
@@ -115,13 +197,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         float: Alpha_m rate constant
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.alpha_m(-65), 5)  # Test for resting potential
-        0.22356
-        >>> round(neuron.alpha_m(-50), 5)  # Test for depolarized potential
-        0.58198
         """
         return 0.1 * (V + 40) / (1 - np.exp(-(V + 40) / 10))
 
@@ -133,13 +208,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Beta_m rate constant (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.beta_m(-65), 5)  # Test for resting potential
-        4.0
-        >>> round(neuron.beta_m(-40), 5)  # Test for depolarized potential
-        0.99741
         """
         return 4.0 * np.exp(-(V + 65) / 18)
 
@@ -151,13 +219,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Alpha_h rate constant (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.alpha_h(-65), 5)  # Test for resting potential
-        0.07
-        >>> round(neuron.alpha_h(-50), 5)  # Test for depolarized potential
-        0.03307
         """
         return 0.07 * np.exp(-(V + 65) / 20)
 
@@ -169,13 +230,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Beta_h rate constant (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.beta_h(-65), 5)  # Test for resting potential
-        0.04743
-        >>> round(neuron.beta_h(-40), 5)  # Test for depolarized potential
-        0.37754
         """
         return 1 / (1 + np.exp(-(V + 35) / 10))
 
@@ -187,13 +241,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Alpha_n rate constant (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.alpha_n(-65), 5)  # Test for resting potential
-        0.0582
-        >>> round(neuron.alpha_n(-50), 5)  # Test for depolarized potential
-        0.12707
         """
         return 0.01 * (V + 55) / (1 - np.exp(-(V + 55) / 10))
 
@@ -205,13 +252,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Beta_n rate constant (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.beta_n(-65), 5)  # Test for resting potential
-        0.125
-        >>> round(neuron.beta_n(-50), 5)  # Test for depolarized potential
-        0.10363
         """
         return 0.125 * np.exp(-(V + 65) / 80)
 
@@ -225,13 +265,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Rate of change of m (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.dm_dt(-65, 0.1), 5) # Test for resting potential
-        -0.19879
-        >>> round(neuron.dm_dt(-50, 0.05), 5) # Test for depolarized potential
-        0.46596
         """
         return self.alpha_m(V) * (1 - m) - self.beta_m(V) * m
 
@@ -244,13 +277,6 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Rate of change of h (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.dh_dt(-65, 0.5), 5) # Test for resting potential
-        0.01129
-        >>> round(neuron.dh_dt(-50, 0.6), 5) # Test for depolarized potential
-        -0.09623
         """
         return self.alpha_h(V) * (1 - h) - self.beta_h(V) * h
 
@@ -263,241 +289,133 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Rate of change of n (float)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.dn_dt(-65, 0.3), 5) # Test for resting potential
-        0.00324
-        >>> round(neuron.dn_dt(-50, 0.32), 5) # Test for depolarized potential
-        0.05325
         """
         return self.alpha_n(V) * (1 - n) - self.beta_n(V) * n
 
     # Membrane potential
-    def dV_dt(self, V, m, h, n):
-        I_Na = self.I_Na(V, m, h)
-        I_K = self.I_K(V, n)
-        I_L = self.I_L(V)
-        I_ion = I_Na + I_K + I_L
-        return (self.I_ext - I_ion) / self.C_m
-
-    # Membrane potential with synaptic current
-    def dV_dt(self, V, m, h, n, I_syn):
+    def dV_dt(self, I, V, m, h, n):
         """Calculate the rate of change of the membrane potential (V).
 
         Parameters:
+        - I (float): Synaptic current in µA/cm^2.
         - V (float): Membrane potential (mV)
         - m (float): Sodium activation gate variable (between 0 and 1).
         - h (float): Sodium inactivation gate variable (between 0 and 1).
         - n (float): Potassium activation gate variable (between 0 and 1).
-        - I_syn (float): Synaptic current in µA/cm^2.
 
         Returns:
         float: Rate of change of membrane potential (dV/dt).
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> round(neuron.dV_dt(-65, 0.05, 0.6, 0.32, 0.0), 5) # Test for resting potential
-        -0.31095
-        >>> round(neuron.dV_dt(-50, 0.1, 0.3, 0.5, 5.0), 5) # Test for depolarized potential
-        -53.4661
         """
         I_Na = self.I_Na(V, m, h)
         I_K = self.I_K(V, n)
         I_L = self.I_L(V)
         I_ion = I_Na + I_K + I_L
-        return (self.I_ext - I_ion + I_syn) / self.C_m
+        return (I - I_ion) / self.C_m
 
-    def compute_rk4(self, dt, I_syn):
+    def step(self, I):
         """
-        Compute the RK4 intermediate steps for V, m, h, n.
+        Compute a numerical step using Runge-Kutta (RK4).
 
-        Returns:
-        dict: A dictionary with keys 'k1', 'k2', 'k3', 'k4', each containing
-            a tuple of (k_V, k_m, k_h, k_n).
+        Parameters:
+        - I (float): Synaptic current in µA/cm^2.
 
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> rk4_steps = neuron.compute_rk4(0.01, 0.0)
-        >>> isinstance(rk4_steps, dict)
-        True
-        >>> len(rk4_steps)
-        4
-        >>> all(len(step) == 4 for step in rk4_steps.values())
-        True
+        Side-effect:
+            Numerically computes the voltage for the next time step and
+            updates the self.V attribute.
         """
-        V, m, h, n = self.V, self.m, self.h, self.n
+        V = self.V
+        m, h, n = self.m, self.h, self.n
 
-        # Compute k1
-        k1_V = self.dV_dt(V, m, h, n, I_syn)
+        k1_V = self.dV_dt(I, V, m, h, n)
         k1_m = self.dm_dt(V, m)
         k1_h = self.dh_dt(V, h)
         k1_n = self.dn_dt(V, n)
 
-        # Compute k2
         k2_V = self.dV_dt(
-            V + dt * k1_V / 2,
-            m + dt * k1_m / 2,
-            h + dt * k1_h / 2,
-            n + dt * k1_n / 2,
-            I_syn)
-        k2_m = self.dm_dt(V + dt * k1_V / 2, m + dt * k1_m / 2)
-        k2_h = self.dh_dt(V + dt * k1_V / 2, h + dt * k1_h / 2)
-        k2_n = self.dn_dt(V + dt * k1_V / 2, n + dt * k1_n / 2)
+            I,
+            V + self.dt * k1_V / 2,
+            m + self.dt * k1_m / 2,
+            h + self.dt * k1_h / 2,
+            n + self.dt * k1_n / 2)
+        k2_m = self.dm_dt(V + self.dt * k1_V / 2, m + self.dt * k1_m / 2)
+        k2_h = self.dh_dt(V + self.dt * k1_V / 2, h + self.dt * k1_h / 2)
+        k2_n = self.dn_dt(V + self.dt * k1_V / 2, n + self.dt * k1_n / 2)
 
-        # Compute k3
         k3_V = self.dV_dt(
-            V + dt * k2_V / 2,
-            m + dt * k2_m / 2,
-            h + dt * k2_h / 2,
-            n + dt * k2_n / 2,
-            I_syn)
-        k3_m = self.dm_dt(V + dt * k2_V / 2, m + dt * k2_m / 2)
-        k3_h = self.dh_dt(V + dt * k2_V / 2, h + dt * k2_h / 2)
-        k3_n = self.dn_dt(V + dt * k2_V / 2, n + dt * k2_n / 2)
+            I,
+            V + self.dt * k2_V / 2,
+            m + self.dt * k2_m / 2,
+            h + self.dt * k2_h / 2,
+            n + self.dt * k2_n / 2)
+        k3_m = self.dm_dt(V + self.dt * k2_V / 2, m + self.dt * k2_m / 2)
+        k3_h = self.dh_dt(V + self.dt * k2_V / 2, h + self.dt * k2_h / 2)
+        k3_n = self.dn_dt(V + self.dt * k2_V / 2, n + self.dt * k2_n / 2)
 
-        # Compute k4
         k4_V = self.dV_dt(
-            V + dt * k3_V,
-            m + dt * k3_m,
-            h + dt * k3_h,
-            n + dt * k3_n,
-            I_syn)
-        k4_m = self.dm_dt(V + dt * k3_V, m + dt * k3_m)
-        k4_h = self.dh_dt(V + dt * k3_V, h + dt * k3_h)
-        k4_n = self.dn_dt(V + dt * k3_V, n + dt * k3_n)
+            I,
+            V + self.dt * k3_V,
+            m + self.dt * k3_m,
+            h + self.dt * k3_h,
+            n + self.dt * k3_n)
+        k4_m = self.dm_dt(V + self.dt * k3_V, m + self.dt * k3_m)
+        k4_h = self.dh_dt(V + self.dt * k3_V, h + self.dt * k3_h)
+        k4_n = self.dn_dt(V + self.dt * k3_V, n + self.dt * k3_n)
 
-        return {
-            "k1": (k1_V, k1_m, k1_h, k1_n),
-            "k2": (k2_V, k2_m, k2_h, k2_n),
-            "k3": (k3_V, k3_m, k3_h, k3_n),
-            "k4": (k4_V, k4_m, k4_h, k4_n),
-        }
-
-    def update_state(self, dt, rk4_steps):
-        """
-        Update the state variables V, m, h, n using the Runge-Kutta 4 (RK4) steps.
-
-        Parameters:
-        dt (float): Time step.
-        rk4_steps (dict): Dictionary of RK4 intermediate steps (k1, k2, k3, k4).
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> initial_V = neuron.V
-        >>> rk4_steps = neuron.compute_rk4(0.01, 0.0)
-        >>> neuron.update_state(0.01, rk4_steps)
-        >>> neuron.V != initial_V  # Voltage should change after update
-        True
-        """
-        k1, k2, k3, k4 = rk4_steps["k1"], rk4_steps["k2"], rk4_steps["k3"], rk4_steps["k4"]
-
-        self.V += dt * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]) / 6
-        self.m += dt * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]) / 6
-        self.h += dt * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]) / 6
-        self.n += dt * (k1[3] + 2 * k2[3] + 2 * k3[3] + k4[3]) / 6
-
-    def detect_spike(self, dt, threshold=-50):
-        """
-        Detect and record spike timing.
-
-        Parameters:
-        - dt (float): Time step (milliseconds)
-        - threshold (float): Voltage threshold for spike detection (default: -50 mV).
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> neuron.V = -40  # Above threshold
-        >>> neuron.detect_spike(0.1)
-        >>> neuron.last_spike_time
-        0.1
-        >>> neuron.V = -60  # Below threshold
-        >>> neuron.detect_spike(0.1)
-        >>> neuron.last_spike_time is None
-        True
-        """
-        if self.V > threshold and self.last_spike_time is None:
-            self.last_spike_time = dt  # Spike detected
-        elif self.V <= threshold:
-            self.last_spike_time = None  # Reset spike detection
-
-    def step(self, dt, I_syn):
-        """
-        Perform a single simulation step.
-
-        Parameters:
-        - dt (float): Time step (milliseconds)
-        - I_syn (float): Synaptic current input (µA)
-
-        Examples:
-        >>> neuron = HodgkinHuxleyNeuron()
-        >>> initial_V = neuron.V
-        >>> neuron.step(0.01, 0.0)
-        >>> neuron.V != initial_V  # Voltage should update after step
-        True
-        >>> abs(neuron.V) < 1e6  # Voltage should not explode
-        True
-        """
-        # Compute RK4 intermediate steps
-        rk4_steps = self.compute_rk4(dt, I_syn)
-
-        # Update the state variables
-        self.update_state(dt, rk4_steps)
-
-        # Detect spike events
-        self.detect_spike(dt)
+        # Update values
+        self.V += self.dt * (k1_V + 2 * k2_V + 2 * k3_V + k4_V) / 6
+        self.m += self.dt * (k1_m + 2 * k2_m + 2 * k3_m + k4_m) / 6
+        self.h += self.dt * (k1_h + 2 * k2_h + 2 * k3_h + k4_h) / 6
+        self.n += self.dt * (k1_n + 2 * k2_n + 2 * k3_n + k4_n) / 6
 
 
 def main():
-    # Parameters
-    T = 10.0
+    T = 20
     dt = 0.01
-    step = np.arange(0, T, dt)
-    I_inp = np.full(len(step), 15.0)
-    I_inp[0] = 0
-    I_inp[-1] = 0
+    time = np.arange(0, T, dt)
 
-    # Post-Synaptic Constants
-    tau = 30
+    # Neuron
+    neuron = HodgkinHuxleyNeuron(dt)
+
+    # Post-Synaptic constants
     weight = 0.1
+    tau = 30
 
-    # Create neuron
-    neuron = HodgkinHuxleyNeuron()
+    # Stimulus
+    I_inp = np.zeros(len(time))
+    I_inp[int(0.5 / dt):int(1.0 / dt)] = 15.0
 
     # Record data
     V_record = []
-    I_out = np.zeros(len(step))
+    I_out = np.zeros(len(time))
 
-    edit = 0
-    diff = 0
-    for i, t in enumerate(step):
-        neuron.step(dt, I_inp[i])
+    for i, t in enumerate(time):
+        neuron.step(I_inp[i])
         V_record.append(neuron.V)
         I_out[i] = weight * np.exp(-(-65.0 - neuron.V) / tau)
 
     # Plot
     plt.figure(figsize=(8, 6))
 
-    # Currents
-    plt.subplot(2, 1, 1)
-    plt.plot(step, I_inp, label='Input')
-    plt.plot(step, I_out, label='Output')
-    plt.title('Stimulus')
-    plt.xlabel('Time (ms)')
-    plt.ylabel('Current (nA/cm$^2$)')
-    plt.legend()
-    plt.grid()
-
     # Membrane potential V
     plt.subplot(2, 1, 2)
-    plt.plot(step, V_record)
-    plt.plot(step, np.full(len(step), -65.0),
+    plt.plot(time, V_record)
+    plt.plot(time, np.full(len(time), -65),
              linestyle='--', color='gray', label='Resting')
     plt.title('Membrane Potential')
     plt.xlabel('Time (ms)')
     plt.ylabel('Voltage (mV)')
-    plt.legend()
     plt.grid()
+    plt.legend()
+
+    # Currents
+    plt.subplot(2, 1, 1)
+    plt.plot(time, I_inp, label='Input')
+    plt.plot(time, I_out, label='Output')
+    plt.title('Stimulus')
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Current (nA/cm$^2$)')
+    plt.grid()
+    plt.legend()
     plt.tight_layout()
     plt.show()
 
