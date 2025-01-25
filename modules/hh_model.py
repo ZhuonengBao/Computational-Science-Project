@@ -16,24 +16,21 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')
 
-spec = [
-    ('dt', float64),
-    ('C_m', float64),
-    ('V', float64),
-    ('g_Na', float64),
-    ('E_Na', float64),
-    ('m', float64),
-    ('h', float64),
-    ('g_K', float64),
-    ('E_K', float64),
-    ('n', float64),
-    ('g_L', float64),
-    ('E_L', float64),
-]
 
-
-@jitclass(spec)
+@jitclass
 class HodgkinHuxleyNeuron:
+    dt: float
+    C_m: float
+    V: float
+    g_Na: float
+    E_Na: float
+    m: float
+    h: float
+    g_K: float
+    E_K: float
+    n: float
+    g_L: float
+    E_L: float
     """
     Creates a neuron object based on the Hodgkin-Huxley model.
 

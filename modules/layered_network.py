@@ -95,7 +95,7 @@ class LayeredNetworkGraph(object):
 
         # Create neuron objects
         for node in G.nodes():
-            G.nodes[node]['neuron'] = HodgkinHuxleyNeuron()
+            G.nodes[node]['neuron'] = HodgkinHuxleyNeuron(self.step)
 
         return G
 
@@ -338,7 +338,7 @@ class LayeredNetworkGraph(object):
                     neuron = Network[node]['neuron']
 
                     if layer == first_layer:
-                        neuron.step(self.step, I_inp[i])
+                        neuron.step(I_inp[i])
                     else:
                         for pred in list(layer.predecessors(node)):
                             parent = Network[pred]['neuron']
@@ -347,7 +347,7 @@ class LayeredNetworkGraph(object):
                             result = np.exp(-diff / tau)
                             I_temp += weight * result
 
-                        neuron.step(self.step, I_temp)
+                        neuron.step(I_temp)
 
                     self.V_record[node].append(neuron.V)
 
