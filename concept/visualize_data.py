@@ -75,7 +75,7 @@ def calc_potentials_per_layer(network, n):
 
 
 def time_between_spiking(network, n, start, end):
-    V_record, time = network.run_hh_network()
+    V_record, time = network.run()
 
     for t, V in zip(time, V_record[start]):
         if V > -50:
