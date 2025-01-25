@@ -35,6 +35,22 @@ spec = [
 @jitclass(spec)
 class HodgkinHuxleyNeuron:
     """
+    Creates a neuron object based on the Hodgkin-Huxley model.
+
+    The constants used are derived from the work of Rinzel, J. and
+    Ermentrout, G.B. (1998),
+    "Analysis of Neural Excitability and Oscillations."
+
+    Parameters:
+    - step (float): The time step used to approximate the ordinary
+      differential equations (ODEs) of the Hodgkin-Huxley model using the
+      Runge-Kutta numerical method.
+
+    Returns:
+    - (object): An instance representing a neuron modeled using
+                the Hodgkin-Huxley model.
+
+    Doctest:
     >>> neuron = HodgkinHuxleyNeuron(0.01)
 
     # Sodium (Na) Test
@@ -296,10 +312,9 @@ class HodgkinHuxleyNeuron:
         I_ion = I_Na + I_K + I_L
         return (I - I_ion) / self.C_m
 
-    # Perform one step using Runge-Kutta
     def step(self, I):
         """
-        Compute the RK4 intermediate steps for V, m, h, n.
+        Compute a numerical step using Runge-Kutta (RK4).
 
         Parameters:
         - I (float): Synaptic current in µA/cm^2.
