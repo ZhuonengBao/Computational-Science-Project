@@ -10,7 +10,6 @@
  *              "Analysis of Neural Excitability and Oscillations."
 """
 from numba.experimental import jitclass
-from numba import float64
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
@@ -46,83 +45,6 @@ class HodgkinHuxleyNeuron:
     Returns:
     - (object): An instance representing a neuron modeled using
                 the Hodgkin-Huxley model.
-
-    Doctest:
-    >>> neuron = HodgkinHuxleyNeuron(0.01)
-
-    # Sodium (Na) Test
-    >>> round(neuron.I_Na(-65, 0.05, 0.6), 5)  # Test for resting potential
-    -1.035
-    >>> round(neuron.I_Na(-50, 0.1, 0.8), 5)  # Test for depolarized potential
-    -9.6
-    >>> round(neuron.I_Na(50, 1.0, 1.0), 5)  # Test for maximum activation and depolarization
-    0.0
-
-    # Potassium (K) Test
-    >>> round(neuron.I_K(-65, 0.32), 5)  # Test for resting potential
-    4.52985
-    >>> round(neuron.I_K(-50, 0.6), 5)  # Test for depolarized potential
-    125.9712
-    >>> round(neuron.I_K(-77, 0.5), 5)  # Test when V equals E_K (no current expected)
-    0.0
-
-    # Leakage Test
-    >>> round(neuron.I_L(-65), 5)  # Test for resting potential
-    -3.1839
-    >>> round(neuron.I_L(-70), 5)  # Test for hyperpolarized potential
-    -4.6839
-    >>> round(neuron.I_L(-54.387), 5)  # Test when V equals E_L (no current expected)
-    0.0
-
-
-    # Variable Dynamics Test
-    >>> round(neuron.alpha_m(-65), 5)  # Test for resting potential
-    0.22356
-    >>> round(neuron.alpha_m(-50), 5)  # Test for depolarized potential
-    0.58198
-    >>> round(neuron.beta_m(-65), 5)  # Test for resting potential
-    4.0
-    >>> round(neuron.beta_m(-40), 5)  # Test for depolarized potential
-    0.99741
-    >>> round(neuron.alpha_h(-65), 5)  # Test for resting potential
-    0.07
-    >>> round(neuron.alpha_h(-50), 5)  # Test for depolarized potential
-    0.03307
-    >>> round(neuron.beta_h(-65), 5)  # Test for resting potential
-    0.04743
-    >>> round(neuron.beta_h(-40), 5)  # Test for depolarized potential
-    0.37754
-    >>> round(neuron.alpha_n(-65), 5)  # Test for resting potential
-    0.0582
-    >>> round(neuron.alpha_n(-50), 5)  # Test for depolarized potential
-    0.12707
-    >>> round(neuron.beta_n(-65), 5)  # Test for resting potential
-    0.125
-    >>> round(neuron.beta_n(-50), 5)  # Test for depolarized potential
-    0.10363
-    >>> round(neuron.dm_dt(-65, 0.1), 5) # Test for resting potential
-    -0.19879
-    >>> round(neuron.dm_dt(-50, 0.05), 5) # Test for depolarized potential
-    0.46596
-    >>> round(neuron.dh_dt(-65, 0.5), 5) # Test for resting potential
-    0.01129
-    >>> round(neuron.dh_dt(-50, 0.6), 5) # Test for depolarized potential
-    -0.09623
-    >>> round(neuron.dn_dt(-65, 0.3), 5) # Test for resting potential
-    0.00324
-    >>> round(neuron.dn_dt(-50, 0.32), 5) # Test for depolarized potential
-    0.05325
-
-    # Voltage Test
-    >>> round(neuron.dV_dt(0.0, -65, 0.05, 0.6, 0.32), 5) # Test for resting potential
-    -0.31095
-    >>> round(neuron.dV_dt(5.0, -50, 0.1, 0.3, 0.5), 5) # Test for depolarized potential
-    -53.4661
-
-    # Runge-Kutta Numerical Test
-    >>> neuron.step(0.0)
-    >>> round(neuron.V)
-    -65
     """
 
     def __init__(self, step: float):
@@ -159,6 +81,15 @@ class HodgkinHuxleyNeuron:
 
         Returns:
         Sodium ionic current (float)
+
+        Examples:
+        >>> neuron = HodgkinHuxleyNeuron(0.01)
+        >>> round(neuron.I_Na(-65, 0.05, 0.6), 5)  # Test for resting potential
+        -1.035
+        >>> round(neuron.I_Na(-50, 0.1, 0.8), 5)  # Test for depolarized potential
+        -9.6
+        >>> round(neuron.I_Na(50, 1.0, 1.0), 5)  # Test for maximum activation and depolarization
+        0.0
         """
         return self.g_Na * (m**3) * h * (V - self.E_Na)
 
@@ -365,6 +296,87 @@ class HodgkinHuxleyNeuron:
         self.n += self.dt * (k1_n + 2 * k2_n + 2 * k3_n + k4_n) / 6
 
 
+def test():
+    """
+    >>> neuron = HodgkinHuxleyNeuron(0.01)
+
+    # Sodium (Na) Test
+    >>> round(neuron.I_Na(-65, 0.05, 0.6), 5)  # Test for resting potential
+    -1.035
+    >>> round(neuron.I_Na(-50, 0.1, 0.8), 5)  # Test for depolarized potential
+    -9.6
+    >>> round(neuron.I_Na(50, 1.0, 1.0), 5)  # Test for maximum activation and depolarization
+    0.0
+
+    # Potassium (K) Test
+    >>> round(neuron.I_K(-65, 0.32), 5)  # Test for resting potential
+    4.52985
+    >>> round(neuron.I_K(-50, 0.6), 5)  # Test for depolarized potential
+    125.9712
+    >>> round(neuron.I_K(-77, 0.5), 5)  # Test when V equals E_K (no current expected)
+    0.0
+
+    # Leakage Test
+    >>> round(neuron.I_L(-65), 5)  # Test for resting potential
+    -3.1839
+    >>> round(neuron.I_L(-70), 5)  # Test for hyperpolarized potential
+    -4.6839
+    >>> round(neuron.I_L(-54.387), 5)  # Test when V equals E_L (no current expected)
+    0.0
+
+
+    # Variable Dynamics Test
+    >>> round(neuron.alpha_m(-65), 5)  # Test for resting potential
+    0.22356
+    >>> round(neuron.alpha_m(-50), 5)  # Test for depolarized potential
+    0.58198
+    >>> round(neuron.beta_m(-65), 5)  # Test for resting potential
+    4.0
+    >>> round(neuron.beta_m(-40), 5)  # Test for depolarized potential
+    0.99741
+    >>> round(neuron.alpha_h(-65), 5)  # Test for resting potential
+    0.07
+    >>> round(neuron.alpha_h(-50), 5)  # Test for depolarized potential
+    0.03307
+    >>> round(neuron.beta_h(-65), 5)  # Test for resting potential
+    0.04743
+    >>> round(neuron.beta_h(-40), 5)  # Test for depolarized potential
+    0.37754
+    >>> round(neuron.alpha_n(-65), 5)  # Test for resting potential
+    0.0582
+    >>> round(neuron.alpha_n(-50), 5)  # Test for depolarized potential
+    0.12707
+    >>> round(neuron.beta_n(-65), 5)  # Test for resting potential
+    0.125
+    >>> round(neuron.beta_n(-50), 5)  # Test for depolarized potential
+    0.10363
+    >>> round(neuron.dm_dt(-65, 0.1), 5) # Test for resting potential
+    -0.19879
+    >>> round(neuron.dm_dt(-50, 0.05), 5) # Test for depolarized potential
+    0.46596
+    >>> round(neuron.dh_dt(-65, 0.5), 5) # Test for resting potential
+    0.01129
+    >>> round(neuron.dh_dt(-50, 0.6), 5) # Test for depolarized potential
+    -0.09623
+    >>> round(neuron.dn_dt(-65, 0.3), 5) # Test for resting potential
+    0.00324
+    >>> round(neuron.dn_dt(-50, 0.32), 5) # Test for depolarized potential
+    0.05325
+
+    # Voltage Test
+    >>> round(neuron.dV_dt(0.0, -65, 0.05, 0.6, 0.32), 5) # Test for resting potential
+    -0.31095
+    >>> round(neuron.dV_dt(5.0, -50, 0.1, 0.3, 0.5), 5) # Test for depolarized potential
+    -53.4661
+
+    # Runge-Kutta Numerical Test
+    >>> neuron.step(0.0)
+    >>> round(neuron.V)
+    -65
+    """
+    return
+
+
 def main():
     T = 20
     dt = 0.01
@@ -418,4 +430,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    test()
