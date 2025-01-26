@@ -430,4 +430,5 @@ def main():
 
 
 if __name__ == "__main__":
+    # $terminal: python3 -m doctest -v modules/layered_network.py
     test()
