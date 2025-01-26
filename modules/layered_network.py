@@ -21,10 +21,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 import random
+import sys
+import os
 
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d.art3d import Line3DCollection
-from hh_model import HodgkinHuxleyNeuron
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(parent_dir)
+from modules.hh_model import HodgkinHuxleyNeuron
 
 
 class LayeredNetworkGraph(object):
@@ -269,7 +271,8 @@ class LayeredNetworkGraph(object):
         Generates a 2D plot showing neuron voltages over time and a 3D
         visualization of the network structure.
         """
-        fig, axes = plt.subplots(1, 2, figsize=(10, 6))
+        fig, axes = plt.subplots(1, 2, figsize=(12, 6),
+                                 gridspec_kw={'width_ratios': [1, 1.5]})
 
         # Plot the 3D graph
         axes[1].set_axis_off()
@@ -340,13 +343,12 @@ class LayeredNetworkGraph(object):
                     if layer == first_layer:
                         neuron.step(I_inp[i])
                     else:
-                        for pred in list(layer.predecessors(node)):
-                            parent = Network[pred]['neuron']
+                        Vs = np.array([
+                            Network[pred]['neuron'].V
+                            for pred in list(layer.predecessors(node))])
 
-                            diff = np.clip(neuron.V - parent.V, -50, 50)
-                            result = np.exp(-diff / tau)
-                            I_temp += weight * result
-
+                        Vs = np.exp(-(neuron.V - Vs) / tau)
+                        I_temp = sum(weight * Vs)
                         neuron.step(I_temp)
 
                     self.V_record[node].append(neuron.V)
@@ -367,7 +369,7 @@ class LayeredNetworkGraph(object):
 
 if __name__ == '__main__':
     # define graphs
-    n = 5
+    n = 10
     p = 0.2
     prob_inter = 0.5
 
