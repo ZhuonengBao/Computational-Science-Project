@@ -48,6 +48,8 @@ This file uses layered_network.py to get the voltage over time of all neurons in
 ---
 
 ## Requirements
+Python version:
+* Python 3.11
 
 The following Python libraries are required:
 - `numpy`
@@ -58,7 +60,13 @@ The following Python libraries are required:
 
 Install the dependencies with:
 
+```bash
 pip install numpy matplotlib networkx scipy
+```
+
+```bash
+pip install -r requirements.txt
+```
 
 ---
 
