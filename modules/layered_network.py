@@ -28,7 +28,6 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 from modules.hh_model import HodgkinHuxleyNeuron
 
-
 class LayeredNetworkGraph(object):
     def __init__(self, layers, time, step, inter_prob=0.0, verbose=False):
         """
@@ -63,9 +62,11 @@ class LayeredNetworkGraph(object):
         # create internal representation of nodes and edges
         self.get_graphs()
         self.get_nodes()
-        self.get_edges_within_layers()
         self.get_edges_between_layers()
-        self.get_node_positions()
+        
+        if self.verbose:
+            self.get_edges_within_layers()
+            self.get_node_positions()
 
     def generate_erdos_renyi_digraph(self, n, p, s=''):
         """
@@ -86,18 +87,19 @@ class LayeredNetworkGraph(object):
         """
         G = nx.DiGraph()
         names = [s + str(i) for i in range(n)]
-        for name in names:
-            G.add_node(name)
+
+        G.add_nodes_from(names)
 
         # Add edges based on Erdos-Renyi probability
-        for i, u in enumerate(names):
-            for j, v in enumerate(names):
-                if i != j and random.random() < p:
-                    G.add_edge(u, v)
+        adjacency_matrix = np.random.rand(n, n) < p
+        np.fill_diagonal(adjacency_matrix, 0)  # Remove self-loops
+        edges = [(names[i], names[j]) for i, row in enumerate(
+            adjacency_matrix) for j, val in enumerate(row) if val]
+        G.add_edges_from(edges)
 
         # Create neuron objects
-        for node in G.nodes():
-            G.nodes[node]['neuron'] = HodgkinHuxleyNeuron(self.step)
+        neurons = {name: HodgkinHuxleyNeuron(self.step) for name in names}
+        nx.set_node_attributes(G, neurons, "neuron")
 
         return G
 
@@ -110,10 +112,10 @@ class LayeredNetworkGraph(object):
         >>> len(Network.graphs) # Test for number of nodes
         2
         """
-        self.graphs = []
-
-        for n, p, s in self.layers[::-1]:
-            self.graphs.append(self.generate_erdos_renyi_digraph(n, p, s))
+        self.graphs = [
+            self.generate_erdos_renyi_digraph(
+                n, p, s) for n, p, s in reversed(
+                self.layers)]
 
     def get_nodes(self):
         """
@@ -125,17 +127,15 @@ class LayeredNetworkGraph(object):
         True
         """
         self.nodes = []
+        self.update = {}
+        self.V_record = {}
 
         for z, g in enumerate(self.graphs):
             self.nodes.extend([(node, z) for node in g.nodes()])
 
-        self.update = {}
-        for g in self.graphs:
             self.update[g] = list(g.nodes())
 
-        self.V_record = {}
-        for nodes in self.update.values():
-            for node in nodes:
+            for node in g.nodes():
                 self.V_record[node] = []
 
     def get_edges_within_layers(self):
@@ -143,7 +143,7 @@ class LayeredNetworkGraph(object):
         Remap edges in the individual layers to the internal representations of the node IDs.
 
         Examples:
-        >>> Network = LayeredNetworkGraph([(10, 1.0, '')], 10, 1, inter_prob=0.0)
+        >>> Network = LayeredNetworkGraph([(10, 1.0, '')], 10, 1, inter_prob=0.0, verbose=True)
         >>> (('0', 0), ('1', 0)) in Network.edges_within_layers
         True
         """
@@ -162,6 +162,7 @@ class LayeredNetworkGraph(object):
         True
         """
         self.edges_between_layers = []
+
         for z1, h in enumerate(self.graphs[:-1]):
             z2 = z1 + 1
             g = self.graphs[z2]
@@ -169,13 +170,19 @@ class LayeredNetworkGraph(object):
             h_nodes = list(h.nodes())
 
             for node1 in g.nodes():
-                for node2 in h_nodes:
-                    if random.random() < self.inter_prob:
+                # Filter connections by probability and create edges in bulk
+                connections = [
+                    node2 for node2 in h_nodes
+                    if random.random() < self.inter_prob]
+
+                # Add cross-layer edges
+                for node2 in connections:
+                    if node1 not in h:
                         h.add_node(node1)
                         h.nodes[node1]['neuron'] = g.nodes[node1]['neuron']
-                        h.add_edge(node1, node2)
-                        self.edges_between_layers.append(
-                            ((node1, z2), (node2, z1)))
+                    h.add_edge(node1, node2)
+                    self.edges_between_layers.append(
+                        ((node1, z2), (node2, z1)))
 
     def get_node_positions(self, *args, **kwargs):
         """
@@ -185,7 +192,7 @@ class LayeredNetworkGraph(object):
         - *args: Matplotlib layout additional arugments.
         - **kwargs: Matplotlib layout additional keyword arugments.
 
-        >>> Network = LayeredNetworkGraph([(5, 0.3, 's')], 10, 1, inter_prob=0.5)
+        >>> Network = LayeredNetworkGraph([(5, 0.3, 's')], 10, 1, inter_prob=0.5, verbose=True)
         >>> np.all([i in list(Network.node_positions.keys()) for i in Network.nodes])
         True
         """
@@ -330,9 +337,10 @@ class LayeredNetworkGraph(object):
         peak_times = []
         first_layer = self.graphs[-1]
         last_layer = self.graphs[0]
+        graphs = self.graphs[::-1]
         for i in range(len(time)):
 
-            for layer in self.graphs[::-1]:
+            for layer in graphs:
                 nodes = self.update[layer]
                 Network = layer.nodes()
 
@@ -371,7 +379,7 @@ if __name__ == '__main__':
     # define graphs
     n = 10
     p = 0.2
-    prob_inter = 0.5
+    prob_inter = 0.1
 
     T = 25
     dt = 0.01
