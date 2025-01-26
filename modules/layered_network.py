@@ -28,6 +28,7 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 from modules.hh_model import HodgkinHuxleyNeuron
 
+
 class LayeredNetworkGraph(object):
     def __init__(self, layers, time, step, inter_prob=0.0, verbose=False):
         """
@@ -63,7 +64,7 @@ class LayeredNetworkGraph(object):
         self.get_graphs()
         self.get_nodes()
         self.get_edges_between_layers()
-        
+
         if self.verbose:
             self.get_edges_within_layers()
             self.get_node_positions()
@@ -326,9 +327,9 @@ class LayeredNetworkGraph(object):
         time = np.arange(0, self.time, self.step)
 
         # Stimulse of 15nA/cm^2 for 1.0 ms
-        I_inp = np.zeros(len(time))
-        I_inp[0:int(1 / self.step)] = 15.0
-        I_inp[0] = 0
+        I_inp = np.array([15.0
+                          if 0 < i < int(1 / self.step) else 0.0
+                          for i in range(len(time))])
 
         # Post-Synaptic Constants
         tau = 30
