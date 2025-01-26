@@ -21,19 +21,27 @@ def run_experiment_once(inter_connectivity, intra_connectivity, layers, num_neur
     # time_between_spikes = time_between_spiking(network, num_neurons, (0, 0), ((num_neurons - 1), (len(network_setup) - 1)))
     return avg_time
 
+from itertools import product
+
 def run_experiment(inter_connectivities, intra_connectivities, layers, num_neurons, num_iterations, T, dt, verbose=False):
     timings = {}
-    for i in range(num_iterations):
-        for i in range(len(inter_connectivities)):
-            timing = run_experiment_once(inter_connectivities[i], intra_connectivities[i], layers, num_neurons, T, dt, verbose=False)
-            timings[(inter_connectivities[i], intra_connectivities[i])] = timing
+    for _ in range(num_iterations):
+        # Generate all combinations of inter_connectivities and intra_connectivities
+        for inter, intra in product(inter_connectivities, intra_connectivities):
+            timing = run_experiment_once(inter, intra, layers, num_neurons, T, dt, verbose=False)
+            timings[(inter, intra)] = timing
     print(timings)
     return timings
 
+def data_to_file(filename, data):
+    with open(filename, 'w') as file:
+        for key, value in data.items():
+            file.write(f"{key}: {value}\n")
+
 
 if __name__=="__main__":
-    inter_connectivities = [0.01, 0.2]
-    intra_connectivities = [0.04, 0.04]
+    inter_connectivities = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
+    intra_connectivities = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
     assert len(inter_connectivities) == len(intra_connectivities), "The lengths of inter_connectivities and \
         intra_connectivities should be the same"
     layers = 3
@@ -50,4 +58,10 @@ if __name__=="__main__":
     #     [(n, 0, 'g'), (n, p, 'h')], T, dt, inter_prob=prob_inter, verbose=True)
     # a = obj.run()
 
-    run_experiment(inter_connectivities, intra_connectivities, layers, num_neurons, num_iterations, T, dt, verbose=False)
+    # inter_connectivities = [0.01, 0.02]
+    # intra_connectivities = [0.03, 0.04]
+
+    data = run_experiment(inter_connectivities, intra_connectivities, layers, num_neurons, num_iterations, T, dt, verbose=False)
+    
+    filename = "test_data.txt"
+    data_to_file(filename, data)
