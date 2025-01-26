@@ -385,6 +385,8 @@ if __name__ == '__main__':
     T = 25
     dt = 0.01
     obj = LayeredNetworkGraph(
-        [(n, 0, 'g'), (n, p, 'h')], T, dt, inter_prob=prob_inter, verbose=True)
+        [(n, 0, 'g'),
+         (n, p, 'h')],
+        T, dt, inter_prob=prob_inter, verbose=False)
     a = obj.run()
     print(a)
