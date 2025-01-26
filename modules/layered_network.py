@@ -60,6 +60,7 @@ class LayeredNetworkGraph(object):
         self.inter_prob = inter_prob
         self.layout = nx.spring_layout
 
+        # self.generate_erdos_renyi_digraph(5, 1.0, 'g')
         # create internal representation of nodes and edges
         self.get_graphs()
         self.get_nodes()
@@ -87,20 +88,18 @@ class LayeredNetworkGraph(object):
         5
         """
         G = nx.DiGraph()
-        names = [s + str(i) for i in range(n)]
 
-        G.add_nodes_from(names)
+        for i in range(n):
+            name = f"{s}{i}"
+            G.add_node(name, neuron=HodgkinHuxleyNeuron(self.step))
 
-        # Add edges based on Erdos-Renyi probability
+        # Generate adjacency matrix and get edge indices
         adjacency_matrix = np.random.rand(n, n) < p
-        np.fill_diagonal(adjacency_matrix, 0)  # Remove self-loops
-        edges = [(names[i], names[j]) for i, row in enumerate(
-            adjacency_matrix) for j, val in enumerate(row) if val]
+        source, target = np.where(adjacency_matrix)
+        edges = [(f"{s}{i}", f"{s}{j}") for i, j in zip(source, target)]
         G.add_edges_from(edges)
 
-        # Create neuron objects
-        neurons = {name: HodgkinHuxleyNeuron(self.step) for name in names}
-        nx.set_node_attributes(G, neurons, "neuron")
+        # print(G.nodes()['g0']['neuron'].V)
 
         return G
 
@@ -115,8 +114,8 @@ class LayeredNetworkGraph(object):
         """
         self.graphs = [
             self.generate_erdos_renyi_digraph(
-                n, p, s) for n, p, s in reversed(
-                self.layers)]
+                n, p, s) for n, p, s in self.layers
+        ]
 
     def get_nodes(self):
         """
@@ -129,15 +128,10 @@ class LayeredNetworkGraph(object):
         """
         self.nodes = []
         self.update = {}
-        self.V_record = {}
 
         for z, g in enumerate(self.graphs):
             self.nodes.extend([(node, z) for node in g.nodes()])
-
             self.update[g] = list(g.nodes())
-
-            for node in g.nodes():
-                self.V_record[node] = []
 
     def get_edges_within_layers(self):
         """
@@ -163,27 +157,31 @@ class LayeredNetworkGraph(object):
         True
         """
         self.edges_between_layers = []
+        self.first_layer = []
+        self.last_layer = []
 
+        self.Union = nx.DiGraph()
         for z1, h in enumerate(self.graphs[:-1]):
             z2 = z1 + 1
             g = self.graphs[z2]
 
+            g_nodes = list(g.nodes())
             h_nodes = list(h.nodes())
 
-            for node1 in g.nodes():
-                # Filter connections by probability and create edges in bulk
-                connections = [
-                    node2 for node2 in h_nodes
-                    if random.random() < self.inter_prob]
+            if z1 == 0:
+                self.first_layer = g_nodes
+            if z2 == self.total_layers - 1:
+                self.last_layer = h_nodes
 
-                # Add cross-layer edges
-                for node2 in connections:
-                    if node1 not in h:
-                        h.add_node(node1)
-                        h.nodes[node1]['neuron'] = g.nodes[node1]['neuron']
-                    h.add_edge(node1, node2)
-                    self.edges_between_layers.append(
-                        ((node1, z2), (node2, z1)))
+            self.Union = nx.union(self.Union, h)
+            self.Union = nx.union(self.Union, g)
+
+            for node1 in g_nodes:
+                for node2 in h_nodes:
+                    if np.random.random() < self.inter_prob:
+                        self.Union.add_edge(node1, node2)
+                        self.edges_between_layers.append(
+                            ((node1, z2), (node2, z1)))
 
     def get_node_positions(self, *args, **kwargs):
         """
@@ -226,7 +224,8 @@ class LayeredNetworkGraph(object):
 
             direction = np.array(end) - np.array(start)
             length = np.linalg.norm(direction)
-            direction /= length
+            if length > 0:
+                direction /= length
 
             self.ax.quiver(start[0], start[1], start[2],
                            direction[0], direction[1], direction[2],
@@ -336,42 +335,38 @@ class LayeredNetworkGraph(object):
         weight = 0.1
 
         peak_times = []
-        first_layer = self.graphs[-1]
-        last_layer = self.graphs[0]
-        graphs = self.graphs[::-1]
-        for i in range(len(time)):
+        Network = self.Union.nodes()
+        self.V_record = {node: [] for node in Network}
 
-            for layer in graphs:
-                nodes = self.update[layer]
-                Network = layer.nodes()
+        # for i, node in enumerate(Network):
+        #     print(f"({node}) predecessors: {list(self.Union.predecessors(node))}")
 
-                for node in nodes:
-                    I_temp = 0.0
-                    neuron = Network[node]['neuron']
+        for t in range(len(time)):
+            for i, node in enumerate(Network):
+                neuron = Network[node]['neuron']
 
-                    if layer == first_layer:
-                        neuron.step(I_inp[i])
-                    else:
-                        Vs = np.array([
-                            Network[pred]['neuron'].V
-                            for pred in list(layer.predecessors(node))])
+                if node in self.first_layer:
+                    neuron.step(I_inp[i])
+                else:
+                    Vs = np.array([
+                        Network[pred]['neuron'].V
+                        for pred in list(self.Union.predecessors(node))])
 
-                        Vs = np.exp(-(neuron.V - Vs) / tau)
-                        I_temp = sum(weight * Vs)
-                        neuron.step(I_temp)
+                    I = np.sum(weight * np.exp(-(neuron.V - Vs) / tau))
+                    neuron.step(I)
 
-                    self.V_record[node].append(neuron.V)
+                self.V_record[node].append(neuron.V)
 
-                    # Check for action-potential
-                    if layer == last_layer and i > 3:
-                        prev_V, current_V, next_V = self.V_record[node][-3:]
-                        if prev_V < current_V and current_V > next_V and current_V > 30.0:
-                            peak_times.append(time[i - 1])
+                # Check for action-potential
+                if node in self.last_layer and t > 3:
+                    prev_V, current_V, next_V = self.V_record[node][-3:]
+                    if prev_V < current_V and current_V > next_V and current_V > 30.0:
+                        peak_times.append(time[i - 1])
 
         if self.verbose:
             self.__plot()
 
-        avg = sum(peak_times) / len(peak_times) if peak_times else 0
+        avg = np.mean(np.array(peak_times)) if peak_times else 0
 
         return avg
 
@@ -379,14 +374,14 @@ class LayeredNetworkGraph(object):
 if __name__ == '__main__':
     # define graphs
     n = 10
-    p = 0.2
+    p = 0.3
     prob_inter = 0.1
 
     T = 25
     dt = 0.01
     obj = LayeredNetworkGraph(
         [(n, 0, 'g'),
-         (n, p, 'h')],
-        T, dt, inter_prob=prob_inter, verbose=False)
+         (n, p, 'h')][::-1],
+        T, dt, inter_prob=prob_inter, verbose=True)
     a = obj.run()
     print(a)
