@@ -1,2 +1,2 @@
- # for i, node in enumerate(Network):
-        #     print(f"({node
+
+                        peak_times.append(time[t - 1])
