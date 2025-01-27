@@ -27,7 +27,6 @@ import os
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 from modules.hh_model import HodgkinHuxleyNeuron
-from itertools import product
 
 
 class LayeredNetworkGraph(object):
@@ -363,7 +362,6 @@ class LayeredNetworkGraph(object):
         return avg
 
 
-import time
 if __name__ == '__main__':
     # define graphs
     n = 50
@@ -373,10 +371,7 @@ if __name__ == '__main__':
     T = 25
     dt = 0.01
 
-    start = time.time()
     obj = LayeredNetworkGraph(
         [(n, 0, 'g'), (n, p, 'h'), (n, p, 't')],
         T, dt, inter_prob=prob_inter, verbose=False)
     a = obj.run()
-    end = time.time()
-    print(f"{a} [running time = {round(end - start, 1)}]")
