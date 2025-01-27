@@ -358,7 +358,7 @@ class LayeredNetworkGraph(object):
         if self.verbose:
             self.__plot()
 
-        avg = sum(peak_times) / len(peak_times) if peak_times else 0
+        avg = np.mean(np.array(peak_times)) if peak_times else 0
 
         return avg
 
