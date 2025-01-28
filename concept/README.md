@@ -56,13 +56,9 @@ The following Python libraries are required:
 - `matplotlib`
 - `networkx`
 - `scipy`
-- `random`
+- `numba`
 
 Install the dependencies with:
-
-```bash
-pip install numpy matplotlib networkx scipy
-```
 
 ```bash
 pip install -r requirements.txt
