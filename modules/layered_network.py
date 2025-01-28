@@ -360,16 +360,19 @@ class LayeredNetworkGraph(object):
         return avg
 
 
-if __name__ == '__main__':
-    # define graphs
+def main():
     n = 10
     p = 0.3
-    prob_inter = 0.1
+    prob_inter = 0.5
 
     T = 25
     dt = 0.01
 
-    obj = LayeredNetworkGraph(
+    network = LayeredNetworkGraph(
         [(n, 0, 'g'), (n, p, 'h'), (n, p, 'i')],
         T, dt, inter_prob=prob_inter, verbose=True)
-    a = obj.run()
+    network.run()
+
+
+if __name__ == '__main__':
+    main()
