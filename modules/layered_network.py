@@ -49,6 +49,7 @@ class LayeredNetworkGraph(object):
             - s (float): Scaling factor for the node positions in the layer.
         - time (float): The duration of the simulation.
         - step (float): The time step used to approximate the Hodgkin-Huxley model.
+        - inter_prob (float): Probability of an edge existing between layers.
         - verbose (bool): If True, the function plots the network in a 3D figure.
         """
         self.layers = layers
@@ -59,8 +60,6 @@ class LayeredNetworkGraph(object):
         self.inter_prob = inter_prob
         self.layout = nx.spring_layout
 
-        # self.generate_erdos_renyi_digraph(5, 1.0, 'g')
-        # create internal representation of nodes and edges
         self.get_graphs()
         self.get_nodes()
         self.get_edges_between_layers()
@@ -363,14 +362,14 @@ class LayeredNetworkGraph(object):
 
 if __name__ == '__main__':
     # define graphs
-    n = 50
-    p = 0.5
-    prob_inter = 0.9
+    n = 10
+    p = 0.3
+    prob_inter = 0.1
 
     T = 25
     dt = 0.01
 
     obj = LayeredNetworkGraph(
-        [(n, 0, 'g'), (n, p, 'h'), (n, p, 't')],
-        T, dt, inter_prob=prob_inter, verbose=False)
+        [(n, 0, 'g'), (n, p, 'h'), (n, p, 'i')],
+        T, dt, inter_prob=prob_inter, verbose=True)
     a = obj.run()

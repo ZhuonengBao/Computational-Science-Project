@@ -298,6 +298,11 @@ class HodgkinHuxleyNeuron:
 
 def test():
     """
+    Function is used for unittesting with the doctest module. 
+    The reason for writing this function is because Numba does not work 
+    properly with doctest.
+
+
     >>> neuron = HodgkinHuxleyNeuron(0.01)
 
     # Sodium (Na) Test
@@ -430,5 +435,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # $terminal: python3 -m doctest -v modules/layered_network.py
-    test()
+    main()
