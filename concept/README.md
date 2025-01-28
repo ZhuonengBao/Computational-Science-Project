@@ -67,15 +67,15 @@ pip install -r requirements.txt
 ---
 
 ## Usage
-- `plot a single neuron`: run hh_model.py
-- `simulate multi layered network`: run layered_network.py
-- `plot a few neurons per layer in a multi layered network`: call visualize_hh_network(network, n) in main of visualize_data.py
-- `calculate time between a start and end neuron spiking`: call time_between_spiking(network, n, start, end) in main of visualize_data.py. start and end need to be structured as follow: (node, layer)
-- `plot time between spiking for different connectivities within layers`: call spiking_time_within(n, trials, total_replace) in main of visualize_data.py.
-- `plot time between spiking for different connectivities bewteen layers`: call spiking_time_between(n, trials, total_replace) in main of visualize_data.py.
+- **plot a single neuron**: run `hh_model.py`.
+- **simulate multi layered network**: run 'layered_network.py'.
+- **plot a few neurons per layer in a multi layered network**: call `visualize_hh_network(network, n)` in main of `visualize_data.py`
+- **calculate time between a start and end neuron spiking:** call `time_between_spiking(network, n, start, end)` in main of `visualize_data.py`. 
+- **plot time between spiking for different connectivities within  and between layers**: call `combined_spiking_time(n, trials, total_replace)` in main of `visualize_data.py`.
+.
 
   ## Key parameters
-  - `n`: number of neurons per network
-  - `start and end`: Neurons to measure time difference between spiking. These are structured like (node, layer)
-  - `trials`: The number of networks generated to run the simulations.
-  - `total replace`: This determines the ammount of times the start and end neuron get replaced.
+  - **n**: number of neurons per network
+  - **start and end**: Neurons to measure time difference between spiking. These are structured like (node, layer)
+  - **trials**: The number of networks generated to run the simulations.
+  - **total replace**: This determines the ammount of times the start and end neuron get replaced.
