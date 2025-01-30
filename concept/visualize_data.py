@@ -1,3 +1,11 @@
+"""
+ * visualize and analyse data
+ *
+ * Author's: Zhuoneng Bao, Mink van Maanen, Lynne Vogel and Babet Wijsman
+ * Date: 18 January 2025
+ * Description: This file visualizes data and calculates the time interval between spiking.
+
+ """
 import matplotlib.pyplot as plt
 from layered_network import LayeredNetworkGraph
 import networkx as nx
