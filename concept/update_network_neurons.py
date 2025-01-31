@@ -1,3 +1,11 @@
+"""
+ * visualize and analyse data
+ *
+ * Author's: Zhuoneng Bao, Mink van Maanen, Lynne Vogel and Babet Wijsman
+ * Date: 11 January 2025
+ * Description: This file was used to explore adding neurons to a network and letting them interact.
+
+ """
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
