@@ -45,6 +45,9 @@ This file uses layered_network.py to get the voltage over time of all neurons in
 - plots the spiking time for different connectivities between layers
 - plots the spiking time for different connectivities within layers
 
+### `Jupyter Notebook`
+This file contains summarized code for the project, progressing from a single-layer network to a multi-layered network.
+
 ---
 
 ## Requirements
