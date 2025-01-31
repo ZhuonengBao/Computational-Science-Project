@@ -70,6 +70,7 @@ pip install -r requirements.txt
 ---
 
 ## Usage
+### Running the simulation
 - **plot a single neuron**: run `hh_model.py`.
 - **simulate multi layered network**: run 'layered_network.py'.
 - **plot a few neurons per layer in a multi layered network**: call `visualize_hh_network(network, n)` in main of `visualize_data.py`
@@ -77,7 +78,7 @@ pip install -r requirements.txt
 - **plot time between spiking for different connectivities within  and between layers**: call `combined_spiking_time(n, trials, total_replace)` in main of `visualize_data.py`.
 .
 
-  ## Key parameters
+  ### Key parameters
   - **n**: number of neurons per network
   - **start and end**: Neurons to measure time difference between spiking. These are structured like (node, layer)
   - **trials**: The number of networks generated to run the simulations.
