@@ -5,7 +5,6 @@ This project implements the **Hodgkin-Huxley (HH) model** to simulate the activi
 ## Table of Contents
 
 - [Overview](#overview)
-- [Features](#features)
 - [Requirements](#requirements)
 - [Usage](#usage)
   - [Running the Simulation](#running-the-simulation)
@@ -27,23 +26,24 @@ The simulation includes:
 
 ## File Descriptions
 
-### `hh_model.py`
+### `concept`
+This map outlines the scope of our experimental work. Please note that some files may not function as intended.
+
+### `modules`
+This map represents the finalized framework of our project.
+
+#### `modules/hh_model.py`
 This file uses the hodgkin and huxley model to determine the voltage in a neuron over multiple timesteps.
 
-### `layered_network.py`
+#### `modules/layered_network.py`
 This file creates a multi layered network. This network contains multiple neurons, generated from hh_model.py. It determines the interactions between these neurons and records voltage over time for each node.
 
-### `visualize_data.py`
+#### `modules/visualize_data.py`
 This file uses layered_network.py to get the voltage over time of all neurons in a layered network. 
 - It then plots the voltage of a few neurons
 - calculates the spiking time bewteen a start and end neuron
 - plots the spiking time for different connectivities between layers
 - plots the spiking time for different connectivities within layers
-
----
-
-## Features
-
 
 ---
 
@@ -59,10 +59,6 @@ The following Python libraries are required:
 - `random`
 
 Install the dependencies with:
-
-```bash
-pip install numpy matplotlib networkx scipy
-```
 
 ```bash
 pip install -r requirements.txt
